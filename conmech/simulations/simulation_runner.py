@@ -340,7 +340,7 @@ def simulate(
             prepare(scenario, scene, current_time, with_temperature)
 
         with timer["all_solver"]:
-            acceleration, temperature = solve_function(
+            scene.exact_acceleration, temperature = solve_function(
                 scene=scene,
                 energy_functions=energy_functions,
                 initial_a=acceleration,
@@ -356,8 +356,7 @@ def simulate(
                 operation(scene=scene)  # (current_time, scene, a, base_a)
 
         with timer["all_iterate"]:
-            scene.iterate_self(acceleration, temperature=temperature)
-            # scene.exact_acceleration = acceleration
+            scene.iterate_self(scene.exact_acceleration, temperature=temperature)
 
     for key in timer:
         all_time = timer.dt[key].sum()
