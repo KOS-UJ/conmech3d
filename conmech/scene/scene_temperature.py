@@ -29,7 +29,7 @@ def integrate_boundary_temperature(
     boundary_displacement_step = time_step * boundary_velocity_new
     penetration_norm = _get_penetration_positive(
         displacement_step=boundary_displacement_step,
-        normals=(-1) * boundary_obstacle_normals,  # # TODO: Check this / boundary_obstacle_normals,
+        normals=(-1) * boundary_obstacle_normals,  # TODO: Check this / boundary_obstacle_normals,
         initial_penetration=initial_penetration,
     )
 

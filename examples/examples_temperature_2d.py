@@ -3,7 +3,6 @@ import numpy as np
 from conmech.helpers.config import Config, SimulationConfig
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.schedule import Schedule
-from conmech.solvers.calculator import Calculator
 from conmech.scenarios.scenarios import (
     M_CIRCLE,
     M_POLYGON,
@@ -180,7 +179,7 @@ def main(mesh_density=5, final_time=3, plot_animation=True):
         all_scenarios=all_scenarios,
         file=__file__,
         plot_animation=plot_animation,
-        config=Config(shell=False),
+        config=Config(shell=False, animation_backend="matplotlib"),
     )
 
 

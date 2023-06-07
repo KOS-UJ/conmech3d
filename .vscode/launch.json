@@ -2,6 +2,41 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Draft examples 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/draft_examples.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples 2D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_2d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_3d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples temperature 2D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_temperature_2d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples temperature 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_temperature_3d.py",
+            "justMyCode": false
+        },
+        {
             "name": "Train graph",
             "type": "python",
             "request": "launch",
@@ -9,29 +44,6 @@
             "console": "integratedTerminal",
             "args": [
                 "--mode=train"
-            ],
-            "justMyCode": false
-        },
-        {
-            "name": "Plot graph",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/deep_conmech/run_model.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--mode=plot"
-            ],
-            "justMyCode": false
-            // "sudo": true
-        },
-        {
-            "name": "Visualize graph",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/deep_conmech/run_model.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--mode=visualize"
             ],
             "justMyCode": false
         },
@@ -47,39 +59,27 @@
             "justMyCode": false
         },
         {
-            "name": "Examples temperature 3D",
+            "name": "Visualize graph",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/examples_temperature_3d.py",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=visualize"
+            ],
             "justMyCode": false
         },
         {
-            "name": "Examples 3D",
+            "name": "Plot graph",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/examples_3d.py",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=plot"
+            ],
             "justMyCode": false
+            // "sudo": true
         },
-        {
-            "name": "Examples 2D",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/examples/examples_2d.py",
-            "justMyCode": false
-        },
-        {
-            "name": "Draft examples 3D",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/examples/draft_examples.py",
-            "justMyCode": false
-        },
-        {
-            "name": "Compare examples 3D",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/examples/compare_examples.py",
-            "justMyCode": false
-        }
     ]
 }

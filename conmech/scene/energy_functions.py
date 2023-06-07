@@ -75,13 +75,13 @@ class StaticEnergyArguments(NamedTuple):
     use_green_strain: bool
     use_nonconvex_friction_law: bool
     use_constant_contact_integral: bool
+    # with_self_collisions: bool = False
 
-SELF_COLLISION_SCALAR = 10
+SELF_COLLISION_SCALAR = 10.
 
 def _get_constant_boundary_integral(
-    args: EnergyObstacleArguments, use_nonconvex_friction_law: bool
+    args: EnergyObstacleArguments, use_nonconvex_friction_law: bool #, with_self_collisions: bool
 ):
-    # print("Constant integral")
     boundary_v_new = args.boundary_velocity_old
     boundary_displacement_step = args.time_step * boundary_v_new
 
@@ -124,9 +124,8 @@ def _get_constant_boundary_integral(
 
 
 def _get_actual_boundary_integral(
-    acceleration, args: EnergyObstacleArguments, use_nonconvex_friction_law: bool
+    acceleration, args: EnergyObstacleArguments, use_nonconvex_friction_law: bool #, with_self_collisions: bool
 ):
-    # print("Actual integral")
     boundary_nodes_count = args.boundary_velocity_old.shape[0]
     boundary_a = acceleration[:boundary_nodes_count, :]  # TODO: boundary slice
 
@@ -138,6 +137,7 @@ def _get_actual_boundary_integral(
         boundary_v_new=boundary_v_new,
         args=args,
         use_nonconvex_friction_law=use_nonconvex_friction_law,
+        # with_self_collisions=with_self_collisions
     )
     return rhs_boundary_contact.sum()
 
@@ -147,27 +147,18 @@ def _get_boundary_integral(
     boundary_v_new,
     args: EnergyObstacleArguments,
     use_nonconvex_friction_law: bool,
+    # with_self_collisions: bool
 ):
     penetration_norm = _get_penetration_positive(
         displacement_step=boundary_displacement_step,
         normals=(-1) * args.boundary_obstacle_normals,
         initial_penetration=args.initial_penetration,
     )
-    penetration_norm_self = _get_penetration_positive(
-        displacement_step=boundary_displacement_step,
-        normals=(-1) * args.boundary_obstacle_normals_self,
-        initial_penetration=args.initial_penetration_self,
-    )
     velocity_tangential = nph.get_tangential(boundary_v_new, args.boundary_normals)
 
     resistance_normal = _obstacle_resistance_potential_normal(
         penetration_norm=penetration_norm,
         hardness=args.obstacle_prop.hardness,
-        time_step=args.time_step,
-    )
-    resistance_normal_self = _obstacle_resistance_potential_normal(
-        penetration_norm=penetration_norm_self,
-        hardness=SELF_COLLISION_SCALAR * args.obstacle_prop.hardness,
         time_step=args.time_step,
     )
     # 64bit does not converge with penetration_norm instead of initial_penetration
@@ -178,9 +169,23 @@ def _get_boundary_integral(
         time_step=args.time_step,
         use_nonconvex_friction_law=use_nonconvex_friction_law,
     )
-    boundary_integral = args.surface_per_boundary_node * (
-        resistance_normal + resistance_normal_self + resistance_tangential
-    )
+    
+    boundary_values = resistance_normal + resistance_tangential
+    if True: #with_self_collisions:
+        penetration_norm_self = _get_penetration_positive(
+            displacement_step=boundary_displacement_step,
+            normals=(-1) * args.boundary_obstacle_normals_self,
+            initial_penetration=args.initial_penetration_self,
+        )
+        resistance_normal_self = _obstacle_resistance_potential_normal(
+            penetration_norm=penetration_norm_self,
+            hardness=SELF_COLLISION_SCALAR * args.obstacle_prop.hardness,
+            time_step=args.time_step,
+        )
+        boundary_values += 0.*resistance_normal_self
+    boundary_integral = (
+        args.surface_per_boundary_node * boundary_values
+    ).sum()
     return boundary_integral
 
 
@@ -206,7 +211,6 @@ def _compute_component_energy(
     prop_2,
     use_green_strain,
 ):
-    # print("compute_component_energy")
     f_w = _get_deform_grad(component, dx_big_jax)
     if use_green_strain:
         eps_w = _get_strain_green(deform_grad=f_w)
@@ -315,6 +319,7 @@ def _energy_obstacle_colliding(
             acceleration=acceleration,
             args=args,
             use_nonconvex_friction_law=static_args.use_nonconvex_friction_law,
+            # with_self_collisions=static_args.with_self_collisions
         )
         return main_energy + boundary_integral
 

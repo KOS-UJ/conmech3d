@@ -65,6 +65,7 @@ class Scene(BodyForces):
         self.mesh_obstacles: List[BodyPosition] = []
         self.energy_functions = None
         self.lifted_acceleration = None
+
         self.step = 0
         self.norm_lifted_new_displacement = None
         self.recentered_norm_lifted_new_displacement = None
@@ -207,7 +208,7 @@ class Scene(BodyForces):
         self.boundary_obstacle_normals_self = np.zeros_like(self.boundary_nodes)
         self.penetration_scalars_self = np.zeros((self.boundary_nodes_count, 1))
 
-        scalar = 1  # 8 #5 #2 10
+        scalar = 1.
 
         closest_indices, _, closest_weights = interpolate_nodes(
             base_nodes=self.moved_nodes,

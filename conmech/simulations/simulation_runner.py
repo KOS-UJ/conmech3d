@@ -1,4 +1,5 @@
 import copy
+import json
 import os
 from ctypes import ArgumentError
 from dataclasses import dataclass
@@ -101,17 +102,6 @@ def create_scene(scenario):
             raise ArgumentError
 
         scene.normalize_and_set_obstacles(scenario.linear_obstacles, scenario.mesh_obstacles)
-
-        scene.err_net_disp = 0
-        scene.err_net_red_acc = 0
-        scene.err_net_out = 0
-        scene.err_net_acc = 0
-
-        scene.err_skinning_disp = 0
-        scene.err_skinning_red_acc = 0
-        scene.err_skinning_red2_acc = 0
-        scene.err_skinning_acc = 0
-
         return scene
 
     scene = cmh.profile(
@@ -134,7 +124,7 @@ def run_examples(
     scenes = []
     for i, scenario in enumerate(all_scenarios):
         print(f"-----EXAMPLE {i + 1}/{len(all_scenarios)}-----")
-        catalog = cmh.get_run_label(config, scenario)
+        catalog = os.path.splitext(os.path.basename(file))[0].upper()
 
         scene, _ = run_scenario(
             solve_function=get_solve_function(scenario.simulation_config),
@@ -212,7 +202,7 @@ def run_scenario(
     start_time = config.current_time
 
     if save_files:
-        final_catalog = f"{config.output_catalog}/{run_config.catalog}" #start_time} - {
+        final_catalog = f"{config.output_catalog}/{start_time} - {run_config.catalog}"
         cmh.create_folders(f"{final_catalog}/scenarios")
         if with_reduced:
             cmh.create_folders(f"{final_catalog}/scenarios_reduced")
@@ -233,7 +223,7 @@ def run_scenario(
             plotter_functions.save_three(
                 scene=scene,
                 step=step[0],
-                label=f"{start_time}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}_{scenario.name}",  # timestamp
+                label=f"{start_time}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}",  # timestamp
                 folder="./three",
             )
         if run_config.save_all or plot_index:
@@ -350,7 +340,7 @@ def simulate(
             prepare(scenario, scene, current_time, with_temperature)
 
         with timer["all_solver"]:
-            scene.exact_acceleration, temperature = solve_function(
+            acceleration, temperature = solve_function(
                 scene=scene,
                 energy_functions=energy_functions,
                 initial_a=acceleration,
@@ -366,7 +356,8 @@ def simulate(
                 operation(scene=scene)  # (current_time, scene, a, base_a)
 
         with timer["all_iterate"]:
-            scene.iterate_self(scene.exact_acceleration, temperature=temperature)
+            scene.iterate_self(acceleration, temperature=temperature)
+            # scene.exact_acceleration = acceleration
 
     for key in timer:
         all_time = timer.dt[key].sum()
