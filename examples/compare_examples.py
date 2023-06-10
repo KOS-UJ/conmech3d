@@ -58,7 +58,7 @@ def compare_latest(label=None):
     
     input_path = 'output'
 
-    all_scene_files = cmh.find_files_by_extension(input_path, "scenes")
+    all_scene_files = cmh.find_files_by_extension(input_path, "scenes_comparer")
 
     dense = True
     path_id = "/scenarios/" if dense else "/scenarios_reduced/"

@@ -37,6 +37,13 @@
             "justMyCode": false
         },
         {
+            "name": "Temperature 2023",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/temperature_2023.py",
+            "justMyCode": false
+        },
+        {
             "name": "Train graph",
             "type": "python",
             "request": "launch",

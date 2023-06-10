@@ -28,13 +28,12 @@ def get_data(scene, get_edges):
     return scene.boundary_nodes, convert_to_int_list(boundary_data)
 
 
-def save_three(scene, step, label, folder, skip=10): #1
+def save_three(scene, step, folder, skip=10): #1
     # Three.js
     if step % skip != 0:
         return
 
-    simulation_folder = f"{folder}/{label}"
-    cmh.create_folder(simulation_folder)
+    cmh.create_folders(folder)
 
     nodes, boundary_surfaces = get_data(scene, get_edges=False)
     if hasattr(scene, "reduced"):
@@ -80,24 +79,25 @@ def save_three(scene, step, label, folder, skip=10): #1
             convert_to_int_list(mesh.boundary_surfaces) for mesh in scene.mesh_obstacles
         ]
 
-    file_path = f"{simulation_folder}/{step}.json"
-    save_results_three(file_path, json_dict, folder)
+    file_path = f"{folder}/{step}.json"
+    save_results_three(file_path, json_dict)
 
 
-def save_results_three(file_path, json_dict, folder):
+def save_results_three(file_path, json_dict):
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
 
-    list_path = f"{folder}/list.json"
+    # list_path = f"{folder}/list.json"
+    list_path = "output/list.json"
     cmh.clear_file(list_path)
 
-    folder_list = [f[0] for f in os.walk(folder)][1:]
+    folder_list = [f[0] for f in os.walk('output') if '0.json' in f[2]] #[1:]
     folder_list.sort(reverse=True)
     simulations_list, step_list = [], []
     for simulation in folder_list:
         steps = [int(os.path.splitext(file)[0]) for file in os.listdir(simulation)]
         if len(steps) > 1:
-            simulations_list.append(os.path.basename(simulation))
+            simulations_list.append(simulation) #os.path.basename(simulation))
             step_list.append(max(steps))
 
     with open(list_path, "w", encoding="utf-8") as file:

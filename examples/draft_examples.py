@@ -40,7 +40,7 @@ def main():
     # mode = "skinning"
     # mode = "skinning_backwards"
 
-    for mode in ["skinning", "net"]: # "skinning_backwards",  # Do not use normal
+    for mode in ["skinning_backwards", "skinning", "net"]:  # Do not use normal
         run_simulation(mode)
 
     training_config = TrainingConfig(shell=False)
@@ -63,7 +63,7 @@ def run_simulation(mode):
             mode=mode,
         )
 
-    final_time = 1.2 #8
+    final_time = 0.3 #1.2 8
     scale_forces = 5.0
 
     # all_print_scenaros = scenarios.all_print(config.td, config.sc)

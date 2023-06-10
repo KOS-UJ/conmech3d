@@ -94,6 +94,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         var animationCount;
         var simulationName;
 
+        const output_path = './output';
+
         const fileLoader = new THREE.FileLoader();
         const speedSlow = 0.1;
         const speedNormal = 1.;
@@ -152,7 +154,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         setHtml("nodesMode", nodesMode);
 
         var simulationSelector = document.getElementById('simulationSelector');
-        var listFile = await loadFileAsync('./list.json');
+        var listFile = await loadFileAsync(`${output_path}/list.json`);
 
         simulationName = listFile.simulations[0];
         animationCount = listFile.steps[0];

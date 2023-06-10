@@ -34,7 +34,6 @@ draw_obstacle = True
 
 cycles = True  # False
 output_video = True  # True
-output_path = "/home/michal/Desktop/conmech/output"
 hidden_render_prints = True
 
 print("Args: ", args)
@@ -54,14 +53,16 @@ def find_files_by_extension(directory, extension):
     return files
 
 
-scene_files = find_files_by_extension(input_path, "scenes_data")
+scene_files = find_files_by_extension(input_path, "scenes_blender")
 path_id = "/scenarios/" if dense else "/scenarios_reduced/"
 scene_files = [f for f in scene_files if path_id in f]
 all_arrays_path = max(scene_files, key=os.path.getctime)
 all_arrays_name = os.path.basename(all_arrays_path).split("DATA")[0]
+output_path = all_arrays_path.split("/scenarios/")[0]
 
 print(f"FILE: {all_arrays_name}")
-# raise ArgumentError(file_name)
+print(f"OUTPUT: {output_path}")
+# raise ArgumentError(output_path)
 # exit()
 
 

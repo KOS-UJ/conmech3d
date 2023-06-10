@@ -88,7 +88,7 @@ class Calculator:
         # if cmh.get_from_os("JAX_ENABLE_X64"):
         #     assert state.converged
 
-        # assert not jnp.isnan(state.x_k).any()
+        assert not jnp.isnan(state.x_k).any()
 
         if verbose and not state.converged:
             if state.status == 5:

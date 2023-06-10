@@ -55,7 +55,7 @@ def main(mesh_density=16, final_time=2, plot_animation=True):  # 100
             schedule=schedule,
             forces_function=np.array([0.0, 0.0, -0.5]),
             obstacle=Obstacle(
-                np.array([[[0.3, 0.2, 1.0]], [[0.0, 0.0, -0.01]]]), default_obstacle_prop
+                np.array([[[0.3, 0.2, 1.0]], [[0.0, 0.0, -1.0]]]), default_obstacle_prop
             ),
             simulation_config=simulation_config,
         ),
@@ -74,7 +74,7 @@ def main(mesh_density=16, final_time=2, plot_animation=True):  # 100
             schedule=schedule,
             forces_function=f_rotate_3d,
             obstacle=Obstacle(
-                np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, 0.3]]]), default_obstacle_prop
+                np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, -0.7]]]), default_obstacle_prop
             ),
             simulation_config=simulation_config,
         ),
@@ -155,7 +155,7 @@ def main(mesh_density=16, final_time=2, plot_animation=True):  # 100
         all_scenarios=[*advanced_scenarios, *basic_scenarios],
         file=__file__,
         plot_animation=plot_animation,
-        config=Config(shell=False, animation_backend="matplotlib"),
+        config=Config(shell=False, animation_backend="blender"),
     )
 
 

@@ -154,35 +154,38 @@ class RunScenarioConfig:
 
 def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     # Blender
-    arrays_path = scenes_path + "_data"
-    arrays = (scene.boundary_nodes, scene.boundaries.boundary_surfaces)
+    blender_data_path = scenes_path + "_blender"
+    blender_data = (scene.boundary_nodes, scene.boundaries.boundary_surfaces)
     if isinstance(scene, SceneTemperature):
-        arrays += (scene.t_old,)
+        blender_data += (scene.t_old,)
     else:
-        arrays += (None,)
+        blender_data += (None,)
 
     for obs in scene.mesh_obstacles:  # TODO: Mesh obstacles and temperature - create dataclass
-        arrays += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
+        blender_data += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
 
-    scenes_file, indices_file = pkh.open_files_append(arrays_path)
-    with scenes_file, indices_file:
-        pkh.append_data(data=arrays, data_path=arrays_path, lock=None)
+    pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
 
+    # Comparer
+    comparer_data_path = scenes_path + "_comparer"
+
+    normalized_nodes = (scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement)
+    comparer_data = {'displacement_old': scene.displacement_old, 'exact_acceleration': scene.exact_acceleration,
+             'normalized_nodes': normalized_nodes, 'lifted_acceleration': scene.lifted_acceleration,
+             "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
+             "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
+             "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)}
+    
+    pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
+
+    # Matplotlib
     if save_animation:
-        scenes_file, indices_file = pkh.open_files_append(scenes_path)
-        with scenes_file, indices_file:
-            scene_copy = copy.copy(scene)
-            scene_copy.prepare_to_save()
-            data = scene_copy
-            
-            # normalized_nodes = (scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement)
-            # data = {'displacement_old': scene.displacement_old, 'exact_acceleration': scene.exact_acceleration,
-            #          'normalized_nodes': normalized_nodes, 'lifted_acceleration': scene.lifted_acceleration,
-            #          "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
-            #          "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
-            #          "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)}
+        # scenes_file, indices_file = pkh.open_files_append(scenes_path)
+        # with scenes_file, indices_file:
+        scene_copy = copy.copy(scene)
+        scene_copy.prepare_to_save()
 
-            pkh.append_data(data=data, data_path=scenes_path, lock=None)
+        pkh.append_data(data=scene_copy, data_path=scenes_path, lock=None)
 
 
 def run_scenario(
@@ -199,19 +202,21 @@ def run_scenario(
     with_reduced = hasattr(scene, "reduced")
     save_files = run_config.plot_animation or run_config.save_all
     save_animation = run_config.plot_animation
-    start_time = config.current_time
 
-    if save_files:
-        final_catalog = f"{config.output_catalog}/{start_time} - {run_config.catalog}"
-        cmh.create_folders(f"{final_catalog}/scenarios")
-        if with_reduced:
-            cmh.create_folders(f"{final_catalog}/scenarios_reduced")
-        scenes_path = f"{final_catalog}/scenarios/{scenario.name}_DATA.scenes"
-        scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{scenario.name}_DATA.scenes"
-    else:
-        final_catalog = ""
-        scenes_path = ""
-        scenes_path_reduced = ""
+    # if save_files:
+    final_catalog = f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
+    cmh.create_folders(f"{final_catalog}/scenarios")
+    #     if with_reduced:
+    cmh.create_folders(f"{final_catalog}/scenarios_reduced")
+    #     scenes_path = f"{final_catalog}/scenarios/{scenario.name}_DATA.scenes"
+    #     scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{scenario.name}_DATA.scenes"
+    # else:
+    #     final_catalog = ""
+    #     scenes_path = ""
+    #     scenes_path_reduced = ""
+    label=f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}" # {start_time}_
+    scenes_path = f"{final_catalog}/scenarios/{label}_DATA.scenes"
+    scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}_DATA.scenes"
 
     step = [0]  # TODO: #65 Clean
 
@@ -223,8 +228,7 @@ def run_scenario(
             plotter_functions.save_three(
                 scene=scene,
                 step=step[0],
-                label=f"{start_time}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}",  # timestamp
-                folder="./three",
+                folder=f"{final_catalog}/three/{label}"
             )
         if run_config.save_all or plot_index:
             save_scene(scene=scene, scenes_path=scenes_path, save_animation=save_animation)
