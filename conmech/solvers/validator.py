@@ -4,6 +4,7 @@ Created at 18.02.2021
 
 import numpy as np
 
+from conmech.helpers import jxh
 from conmech.solvers.solver_methods import make_equation
 
 
@@ -21,10 +22,10 @@ class Validator:
         quality_inv = np.linalg.norm(
             self.rhs(
                 solution,
-                state.body.mesh.initial_nodes,
-                state.body.mesh.contact_boundary,
-                self.elasticity,
-                state.body.get_integrated_forces_vector(),
+                state.body.initial_nodes,
+                state.body.contact_boundary,
+                jxh.to_dense_np(self.elasticity),
+                state.body.get_integrated_forces_vector_np(),
             )
         )
         if quality_inv == 0:

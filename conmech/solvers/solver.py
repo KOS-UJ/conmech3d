@@ -23,12 +23,12 @@ class Solver:
 
         self.time_step = time_step
         self.current_time = 0
-        self.u_vector = np.zeros(self.body.mesh.nodes_count * 2)
-        self.v_vector = np.zeros(self.body.mesh.nodes_count * 2)
-        self.t_vector = np.zeros(self.body.mesh.nodes_count)
-        self.p_vector = np.zeros(self.body.mesh.nodes_count)  # TODO #23
+        self.u_vector = np.zeros(self.body.nodes_count * 2)
+        self.v_vector = np.zeros(self.body.nodes_count * 2)
+        self.t_vector = np.zeros(self.body.nodes_count)
+        self.p_vector = np.zeros(self.body.nodes_count)  # TODO #23
 
-        self.elasticity = body.elasticity
+        self.elasticity = body.matrices.elasticity
 
         self.statement.update(
             Variables(
@@ -58,9 +58,9 @@ class Solver:
         )
 
         for dirichlet_cond in self.statement.find_dirichlet_conditions():
-            c = self.body.mesh.boundaries.boundaries[dirichlet_cond].node_condition
-            node_count = self.body.mesh.nodes_count
-            for i, j in self.body.mesh.boundaries.get_all_boundary_indices(
+            c = self.body.boundaries.boundaries[dirichlet_cond].node_condition
+            node_count = self.body.nodes_count
+            for i, j in self.body.boundaries.get_all_boundary_indices(
                 dirichlet_cond, node_count, self.statement.dimension
             ):
                 solution[i] = c[j]

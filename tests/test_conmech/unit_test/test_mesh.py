@@ -7,7 +7,9 @@ import pytest
 
 from conmech.mesh.boundaries_description import BoundariesDescription
 from conmech.mesh.boundaries_factory import BoundariesFactory
-from tests.test_conmech.regression.std_boundary import extract_boundary_paths_from_elements
+from tests.test_conmech.regression.std_boundary import (
+    extract_boundary_paths_from_elements,
+)
 
 
 def test_identify_surfaces():

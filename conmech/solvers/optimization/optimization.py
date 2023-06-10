@@ -2,18 +2,16 @@
 Created at 18.02.2021
 """
 import math
+
 import numpy as np
 import scipy.optimize
 
-from conmech.dynamics.statement import (
-    TemperatureStatement,
-    PiezoelectricStatement,
-)
+from conmech.dynamics.statement import PiezoelectricStatement, TemperatureStatement
 from conmech.solvers.solver import Solver
 from conmech.solvers.solver_methods import (
     make_cost_functional,
-    make_cost_functional_temperature,
     make_cost_functional_piezoelectricity,
+    make_cost_functional_temperature,
 )
 
 
@@ -90,8 +88,8 @@ class Optimization(Solver):
                 self.loss,
                 solution,
                 args=(
-                    self.body.mesh.initial_nodes,
-                    self.body.mesh.contact_boundary,
+                    self.body.initial_nodes,
+                    self.body.contact_boundary,
                     self.node_relations,
                     self.node_forces,
                     displacement,
@@ -106,3 +104,25 @@ class Optimization(Solver):
             norm = np.linalg.norm(np.subtract(solution, old_solution))
             old_solution = solution.copy()
         return solution
+
+    # def solve_t(self, initial_guess: np.ndarray, velocity: np.ndarray) -> np.ndarray:
+    #     loss_args = (
+    #         self.mesh.initial_nodes,
+    #         self.mesh.contact_boundary,
+    #         # pylint: disable=no-member # TODO #48
+    #         self.node_temperature,
+    #         # pylint: disable=no-member # TODO #48
+    #         self.temper_rhs,
+    #         velocity,
+    #     )
+    #     # TODO #33
+    #     result = scipy.optimize.minimize(
+    #         self.loss_temp,
+    #         initial_guess,
+    #         args=loss_args,
+    #         method="BFGS",
+    #         options={"disp": True, "maxiter": len(initial_guess) * 1e5},
+    #         tol=1e-12,
+    #     )
+    #     result = result.x
+    #     return result

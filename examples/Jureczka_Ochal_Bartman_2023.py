@@ -261,8 +261,8 @@ def main(show: bool = True, save: bool = False):
                 state.displacement,
                 state.velocity,
                 setup,
-                state.body.mesh.elements,
-                state.body.mesh.initial_nodes,
+                state.body.elements,
+                state.body.initial_nodes,
             )
             c = np.linalg.norm(stress, axis=(1, 2))
             state.temperature = c  # stress[:, 0, 1]

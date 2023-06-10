@@ -7,17 +7,17 @@ import numpy as np
 
 class State:
     def __init__(self, body):
+        # independent_nodes_count - > nodes_count
         self.body = body
-        self.displacement: np.ndarray = np.zeros((self.body.mesh.nodes_count, 2))
-        self.displaced_nodes: np.ndarray = np.copy(self.body.mesh.initial_nodes)
-        self.velocity: np.ndarray = np.zeros((self.body.mesh.nodes_count, 2))
+        self.displacement: np.ndarray = np.zeros((self.body.nodes_count, 2))
+        self.displaced_nodes: np.ndarray = np.copy(self.body.initial_nodes)
+        self.velocity: np.ndarray = np.zeros((self.body.nodes_count, 2))
         self.time = 0
 
     def set_displacement(self, displacement_vector: np.ndarray, time: float = 0):
         self.displacement = displacement_vector.reshape((2, -1)).T
-        self.displaced_nodes[: self.body.mesh.nodes_count, :2] = (
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count, :2]
-            + self.displacement[:, :2]
+        self.displaced_nodes[: self.body.nodes_count, :2] = (
+            self.body.initial_nodes[: self.body.nodes_count, :2] + self.displacement[:, :2]
         )
         self.time = time
 
@@ -28,9 +28,8 @@ class State:
         if update_displacement:
             dt = time - self.time
             self.displacement += dt * self.velocity
-            self.displaced_nodes[: self.body.mesh.nodes_count, :2] = (
-                self.body.mesh.initial_nodes[: self.body.mesh.nodes_count, :2]
-                + self.displacement[:, :2]
+            self.displaced_nodes[: self.body.nodes_count, :2] = (
+                self.body.initial_nodes[: self.body.nodes_count, :2] + self.displacement[:, :2]
             )
         self.time = time
 
@@ -42,9 +41,12 @@ class State:
         raise ValueError(f"Unknown coordinates {item}")
 
     def copy(self) -> "State":
-        return self.__copy__()
+        return self._copy_internal()
 
     def __copy__(self) -> "State":
+        return self._copy_internal()
+
+    def _copy_internal(self) -> "State":
         copy = State(self.body)
         copy.displacement[:] = self.displacement
         copy.displaced_nodes[:] = self.displaced_nodes
@@ -56,12 +58,12 @@ class State:
 class TemperatureState(State):
     def __init__(self, body):
         super().__init__(body)
-        self.temperature = np.zeros(self.body.mesh.nodes_count)
+        self.temperature = np.zeros(self.body.nodes_count)
 
     def set_temperature(self, temperature_vector: np.ndarray):
         self.temperature = temperature_vector
 
-    def __copy__(self) -> "TemperatureState":
+    def _copy_internal(self) -> "TemperatureState":
         copy = TemperatureState(self.body)
         copy.displacement[:] = self.displacement
         copy.displaced_nodes[:] = self.displaced_nodes
@@ -74,12 +76,12 @@ class TemperatureState(State):
 class PiezoelectricState(State):
     def __init__(self, grid):
         super().__init__(grid)
-        self.electric_potential = np.zeros(self.body.mesh.nodes_count)
+        self.electric_potential = np.zeros(self.body.nodes_count)
 
     def set_electric_potential(self, electric_vector: np.ndarray):
         self.electric_potential = electric_vector
 
-    def __copy__(self) -> "PiezoelectricState":
+    def _copy_internal(self) -> "PiezoelectricState":
         copy = PiezoelectricState(self.body)
         copy.displacement[:] = self.displacement
         copy.displaced_nodes[:] = self.displaced_nodes

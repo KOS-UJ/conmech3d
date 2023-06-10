@@ -7,42 +7,45 @@ import numpy as np
 
 from conmech.dynamics.dynamics import DynamicsConfiguration
 from conmech.dynamics.statement import (
-    StaticDisplacementStatement,
-    QuasistaticVelocityStatement,
-    DynamicVelocityWithTemperatureStatement,
-    TemperatureStatement,
-    PiezoelectricStatement,
     DynamicVelocityStatement,
+    DynamicVelocityWithTemperatureStatement,
+    PiezoelectricStatement,
+    QuasistaticVelocityStatement,
     QuasistaticVelocityWithPiezoelectricStatement,
+    StaticDisplacementStatement,
+    TemperatureStatement,
     Variables,
 )
+from conmech.helpers.config import SimulationConfig
 from conmech.properties.body_properties import (
-    TimeDependentTemperatureBodyProperties,
     BodyProperties,
-    TimeDependentBodyProperties,
     StaticBodyProperties,
+    TimeDependentBodyProperties,
     TimeDependentPiezoelectricBodyProperties,
+    TimeDependentTemperatureBodyProperties,
 )
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.schedule import Schedule
+from conmech.scenarios.problems import Dynamic as DynamicProblem
 from conmech.scenarios.problems import (
-    Dynamic as DynamicProblem,
-    TimeDependent as TimeDependentProblem,
+    PiezoelectricQuasistatic as PiezoelectricQuasistaticProblem,
+)
+from conmech.scenarios.problems import (
+    PiezoelectricTimeDependent as PiezoelectricTimeDependentProblem,
 )
 from conmech.scenarios.problems import Problem
 from conmech.scenarios.problems import Quasistatic as QuasistaticProblem
 from conmech.scenarios.problems import Static as StaticProblem
 from conmech.scenarios.problems import TemperatureDynamic as TemperatureDynamicProblem
-from conmech.scenarios.problems import TemperatureTimeDependent as TemperatureTimeDependentProblem
-from conmech.scenarios.problems import PiezoelectricQuasistatic as PiezoelectricQuasistaticProblem
 from conmech.scenarios.problems import (
-    PiezoelectricTimeDependent as PiezoelectricTimeDependentProblem,
+    TemperatureTimeDependent as TemperatureTimeDependentProblem,
 )
+from conmech.scenarios.problems import TimeDependent as TimeDependentProblem
 from conmech.scene.body_forces import BodyForces
-from conmech.solvers import Solvers, SchurComplement
+from conmech.solvers import SchurComplement, Solvers
 from conmech.solvers.solver import Solver
 from conmech.solvers.validator import Validator
-from conmech.state.state import State, TemperatureState, PiezoelectricState
+from conmech.state.state import PiezoelectricState, State, TemperatureState
 
 
 class ProblemSolver:
@@ -68,13 +71,22 @@ class ProblemSolver:
             ),
             body_prop=body_properties,
             schedule=Schedule(time_step=time_step, final_time=0.0),
-            boundaries_description=setup.boundaries,
+            simulation_config=SimulationConfig(
+                use_normalization=False,
+                use_linear_solver=False,
+                use_green_strain=False,
+                use_nonconvex_friction_law=False,
+                use_constant_contact_integral=False,
+                use_lhs_preconditioner=False,
+                with_self_collisions=False,
+                use_pca=False,
+            ),
             dynamics_config=DynamicsConfiguration(
-                normalize_by_rotation=False,
                 create_in_subprocess=False,
                 with_lhs=False,
                 with_schur=False,
             ),
+            boundaries_description=setup.boundaries,
         )
         self.body.set_permanent_forces_by_functions(
             inner_forces_function=setup.inner_forces, outer_forces_function=setup.outer_forces
@@ -98,7 +110,7 @@ class ProblemSolver:
         # TODO: #65 fixed solvers to avoid: th_coef, ze_coef = mu_coef, la_coef
         if isinstance(self.setup, StaticProblem):
             statement = StaticDisplacementStatement(self.body)
-            time_step = 0
+            time_step = 1
         elif isinstance(self.setup, (QuasistaticProblem, DynamicProblem)):
             if isinstance(self.setup, PiezoelectricQuasistaticProblem):
                 statement = QuasistaticVelocityWithPiezoelectricStatement(self.body)
@@ -288,9 +300,7 @@ class Static(ProblemSolver):
         :return: state
         """
         state = State(self.body)
-        state.displacement = initial_displacement(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
-        )
+        state.displacement = initial_displacement(self.body.initial_nodes[: self.body.nodes_count])
 
         self.step_solver.u_vector[:] = state.displacement.ravel().copy()
         self.run(state, n_steps=1, verbose=verbose, **kwargs)
@@ -344,11 +354,9 @@ class TimeDependent(ProblemSolver):
 
         state = State(self.body)
         state.displacement[:] = initial_displacement(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
+            self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
-        )
+        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
 
         self.step_solver.u_vector[:] = state.displacement.ravel().copy()
         self.step_solver.v_vector[:] = state.velocity.ravel().copy()
@@ -414,14 +422,10 @@ class TemperatureTimeDependent(ProblemSolver):
 
         state = TemperatureState(self.body)
         state.displacement[:] = initial_displacement(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
+            self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
-        )
-        state.temperature[:] = initial_temperature(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
-        )
+        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
+        state.temperature[:] = initial_temperature(self.body.initial_nodes[: self.body.nodes_count])
 
         solution = state.velocity.reshape(2, -1)
         solution_t = state.temperature
@@ -508,13 +512,11 @@ class PiezoelectricTimeDependent(ProblemSolver):
 
         state = PiezoelectricState(self.body)
         state.displacement[:] = initial_displacement(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
+            self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
-        )
+        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
         state.electric_potential[:] = initial_electric_potential(
-            self.body.mesh.initial_nodes[: self.body.mesh.nodes_count]
+            self.body.initial_nodes[: self.body.nodes_count]
         )
 
         solution = state.velocity.reshape(2, -1)

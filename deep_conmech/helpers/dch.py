@@ -2,11 +2,10 @@
 deep_conmech helpers
 """
 import os
-
 import resource
-import pandas
-import psutil
 
+import pandas
+import torch.multiprocessing
 
 from deep_conmech.training_config import TrainingConfig
 
@@ -15,10 +14,6 @@ def print_pandas(data):
     name = f"{data}=".split("=")[0]
     print(f">>> {name} <<<")
     print(pandas.DataFrame(data).round(4))
-
-
-def get_used_memory_gb():
-    return psutil.Process(os.getpid()).memory_info().rss / 1024**3  # (b -> kb -> mb -> gb)
 
 
 def cuda_launch_blocking():
@@ -33,3 +28,7 @@ def set_memory_limit(config: TrainingConfig):
     new_soft = int(new_limit_gb * 1024**3)
     resource.setrlimit(rsrc, (new_soft, hard))
     print(f"Memory limit set to {new_limit_gb:.2f} GB")
+
+
+def set_torch_sharing_strategy():
+    torch.multiprocessing.set_sharing_strategy("file_system")

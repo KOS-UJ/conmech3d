@@ -1,0 +1,33 @@
+{
+    "python.formatting.blackArgs": [
+        "--line-length=100",
+        "--target-version=py37"
+    ],
+    // Pylint
+    "python.linting.pylintArgs": [
+        "--attr-rgx=[a-z_][a-z0-9_]{1,30}$|[xyzUVW]$",
+        "--variable-rgx=[a-z_A][a-z0-9_]{0,30}|[UVWXYZ]$",
+        "--disable=missing-docstring",
+        "--disable=too-few-public-methods",
+        "--disable=duplicate-code",
+        "--notes='FIXME,XXX,###'",
+        "--max-args=8",
+        "--max-attributes=16",
+        "--max-public-methods=32",
+        "--max-locals=25",
+        "--max-attributes=16",
+        "--generated-members=torch.*"
+    ],
+    // Pytest
+    "python.testing.pytestArgs": [
+        "tests",
+        "--capture=no",
+        "--durations=10",
+        "--numprocesses=auto"
+    ],
+    "python.testing.pytestEnabled": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none"
+}

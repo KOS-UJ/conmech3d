@@ -3,7 +3,8 @@ pickle helpers
 """
 import pickle
 from io import BufferedReader
-from typing import List
+from threading import Lock
+from typing import Optional
 
 
 def open_files_write(path: str):
@@ -32,14 +33,22 @@ def get_all_indices(data_path):
     return all_indices
 
 
-def append_data(data, data_file: BufferedReader, indices_file: BufferedReader) -> None:
-    index = data_file.tell()
-    pickle.dump(data, data_file)
-    pickle.dump(index, indices_file)
+def append_data(data, data_path: str, lock: Optional[Lock]) -> None:
+    def append_data_internal():
+        data_file, indices_file = open_files_append(data_path)
+        with data_file, indices_file:
+            index = data_file.tell()
+            pickle.dump(data, data_file, protocol=-1)
+            pickle.dump(index, indices_file, protocol=-1)
+
+    if lock is None:
+        append_data_internal()
+    else:
+        with lock:
+            append_data_internal()
 
 
-def load_index(index: int, all_indices: List[int], data_file: BufferedReader):
-    byte_index = all_indices[index]
+def load_byte_index(byte_index: int, data_file: BufferedReader):
     data_file.seek(byte_index)
     data = pickle.load(data_file)
     return data

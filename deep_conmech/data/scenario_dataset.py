@@ -3,15 +3,13 @@ from typing import Callable, List, Optional
 
 import numpy as np
 
-from conmech.helpers import cmh, pkh
+from conmech.helpers import cmh, interpolation_helpers, mph
+from conmech.plotting.plotter_functions import save_three
 from conmech.scenarios.scenarios import Scenario
+from conmech.scene.energy_functions import EnergyFunctions
 from conmech.scene.scene import Scene
-from deep_conmech.data.base_dataset import (
-    BaseDataset,
-    get_assigned_scenarios,
-    is_memory_overflow,
-)
-from deep_conmech.helpers import thh
+from conmech.solvers.calculator import Calculator
+from deep_conmech.data.base_dataset import BaseDataset
 from deep_conmech.scene.scene_input import SceneInput
 from deep_conmech.training_config import TrainingConfig
 
@@ -27,126 +25,140 @@ class ScenariosDataset(BaseDataset):
     def __init__(
         self,
         description: str,
+        use_jax: bool,
         all_scenarios: List[Scenario],
-        layers_count: int,
-        skip_index: int,
         solve_function: Callable,
-        load_features_to_ram: bool,
-        load_targets_to_ram: bool,
-        randomize_at_load: bool,
+        load_data_to_ram: bool,
+        with_scenes_file: bool,
+        randomize: bool,
         config: TrainingConfig,
+        rank: int,
+        world_size: int,
+        device_count: int,
+        item_fn,
     ):
         self.all_scenarios = all_scenarios
-        self.skip_index = skip_index
-        self.solve_function = solve_function
 
         super().__init__(
             description=description,
+            use_jax=use_jax,
             dimension=check_and_get_dimension(all_scenarios),
             data_count=self.get_data_count(self.all_scenarios),
-            layers_count=layers_count,
-            randomize_at_load=randomize_at_load,
-            num_workers=1,  # TODO: #65 Check
-            load_features_to_ram=load_features_to_ram,
-            load_targets_to_ram=load_targets_to_ram,
-            with_scenes_file=True,
+            solve_function=solve_function,
+            load_data_to_ram=load_data_to_ram,
+            randomize=randomize,
+            num_workers=config.scenario_generation_workers,
+            with_scenes_file=with_scenes_file,
             config=config,
+            rank=rank,
+            world_size=world_size,
+            device_count=device_count,
+            item_fn=item_fn,
         )
-        self.initialize_data()
 
     def get_data_count(self, scenarios):
-        return np.sum([int(s.schedule.episode_steps / self.skip_index) for s in scenarios])
+        return np.sum([int(s.schedule.episode_steps) for s in scenarios])
 
     @property
     def data_size_id(self):
-        return f"f:{self.config.td.final_time}_i:{self.skip_index}"
+        return f"f:{self.config.td.final_time}"
 
-    def get_scene(self, scenario: Scenario, layers_count: int, config: TrainingConfig) -> Scene:
+    def get_assigned_scenarios(self, num_workers, process_id):
+        scenarios_count = len(self.all_scenarios)
+        if scenarios_count % num_workers != 0:
+            raise Exception("Cannot divide data generation work")
+        assigned_scenarios_count = int(scenarios_count / num_workers)
+        assigned_scenarios = self.all_scenarios[
+            process_id * assigned_scenarios_count : (process_id + 1) * assigned_scenarios_count
+        ]
+        return assigned_scenarios
+
+    def get_scene(self, scenario: Scenario, config: TrainingConfig) -> Scene:
         scene = SceneInput(
             mesh_prop=scenario.mesh_prop,
             body_prop=scenario.body_prop,
             obstacle_prop=scenario.obstacle_prop,
             schedule=scenario.schedule,
-            normalize_by_rotation=config.normalize_by_rotation,
+            simulation_config=scenario.simulation_config,
             create_in_subprocess=False,
-            layers_count=layers_count,
         )
+        scene.set_randomization(config)
+
         scene.normalize_and_set_obstacles(scenario.linear_obstacles, scenario.mesh_obstacles)
         return scene
 
-    def generate_data_process(self, num_workers, process_id):
-        assigned_scenarios = get_assigned_scenarios(self.all_scenarios, num_workers, process_id)
-        tqdm_description = f"P{process_id}: Generating {self.description}"
-        self.generate_data_internal(
-            assigned_scenarios=assigned_scenarios,
-            tqdm_description=tqdm_description,
-            position=process_id,
-        )
+    def print_stats(self, scene):
+        print(len(scene.initial_nodes))
+        print(len(scene.reduced.initial_nodes))
+        print(np.min(scene.initial_nodes, axis=0))
+        print(np.max(scene.initial_nodes, axis=0))
 
-    def generate_data_simple(self):
-        tqdm_description = "Generating data"
-        self.generate_data_internal(
-            assigned_scenarios=self.all_scenarios,
-            tqdm_description=tqdm_description,
-            position=None,
-        )
+    def generate_data(self):
+        if self.config.generate_data_in_subprocesses:
+            # mph.run_process(self.generate_data_process)
+            done = mph.run_processes(self.generate_data_process, num_workers=self.num_workers)
+            if not done:
+                print("NOT DONE")
+        else:
+            self.generate_data_process()
 
-    def generate_data_internal(
-        self, assigned_scenarios, tqdm_description: str, position: Optional[int]
-    ):
-        simulation_data_count = np.sum([s.schedule.episode_steps for s in self.all_scenarios])
-        start_index = 0 if position is None else position * simulation_data_count
-        current_index = start_index
+    def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
+        assigned_scenarios = self.get_assigned_scenarios(num_workers, process_id)
+        tqdm_description = f"Generating data - process {process_id+1}/{num_workers}"
+        simulation_data_count = np.sum([s.schedule.episode_steps for s in assigned_scenarios])
+        start_index = process_id * simulation_data_count
+        # current_index = start_index
         step_tqdm = cmh.get_tqdm(
             range(simulation_data_count),
             config=self.config,
             desc=tqdm_description,
-            position=position,
+            position=process_id,
         )
         scenario = assigned_scenarios[0]
 
-        scenes_file, indices_file = pkh.open_files_append(self.scenes_data_path)
-        with scenes_file, indices_file:
-            for index in step_tqdm:
-                episode_steps = scenario.schedule.episode_steps
-                ts = (index % episode_steps) + 1
-                if ts == 1:
-                    scenario = assigned_scenarios[int(index / episode_steps)]
-                    scene = self.get_scene(
-                        scenario=scenario, layers_count=self.layers_count, config=self.config
-                    )
-
-                if is_memory_overflow(
-                    config=self.config,
-                    step_tqdm=step_tqdm,
-                    tqdm_description=tqdm_description,
-                ):
-                    return False
-
-                current_time = ts * scene.time_step
-                forces = scenario.get_forces_by_function(scene, current_time)
-                scene.prepare(forces)
-
-                a, normalized_a = self.solve_function(scene)
-                exact_normalized_a_torch = thh.to_double(normalized_a)
-                _ = exact_normalized_a_torch
-
-                if index % self.skip_index == 0:
-                    pkh.append_data(
-                        data=scene, data_file=scenes_file, indices_file=indices_file
-                    )  # exact_normalized_a_torch
-
-                self.check_and_print(
-                    simulation_data_count,
-                    current_index,
-                    scene,
-                    step_tqdm,
-                    tqdm_description,
+        for index in step_tqdm:
+            episode_steps = scenario.schedule.episode_steps
+            ts = (index % episode_steps) + 1
+            if ts == 1:
+                scenario = assigned_scenarios[int(index / episode_steps)]
+                print(f"Scenario {scenario.name}")
+                scene = self.get_scene(scenario=scenario, config=self.config)
+                energy_functions = EnergyFunctions(simulation_config=scene.simulation_config)
+                reduced_energy_functions = EnergyFunctions(
+                    simulation_config=scene.simulation_config
                 )
 
-                # setting = setting.get_copy()
-                scene.iterate_self(a)
-                current_index += 1
+            current_time = ts * scene.time_step
+
+            forces = scenario.get_forces_by_function(scene, current_time)
+            scene, acceleration = self.solve_and_prepare_scene(
+                scene, forces, energy_functions, reduced_energy_functions
+            )
+
+            if self.with_scenes_file:
+                self.safe_save_scene(scene=scene, data_path=self.scenes_data_path)
+            else:
+                self.save_features_and_target(scene=scene)
+
+            # self.check_and_print(
+            #     self.data_count, current_index, scene, step_tqdm, tqdm_description, current_time
+            # )
+            # current_index += 1
+
+            final_catalog = f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
+            label=f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
+
+            label = cmh.get_run_label(self.config, scenario)
+            save_three(
+                scene=scene,
+                step=index,
+                # label=label, #f"{self.config.current_time}_dataset_{self.description}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}",  # timestamp
+                # folder="./three",
+                folder=f"{final_catalog}/three/{label}",
+                skip=20,
+            )
+
+            scene.iterate_self(acceleration)
 
         step_tqdm.set_description(f"{step_tqdm.desc} - done")
         return True

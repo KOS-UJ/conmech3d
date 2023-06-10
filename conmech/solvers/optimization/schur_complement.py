@@ -4,11 +4,11 @@ Created at 22.02.2021
 import math
 
 import numpy as np
+import scipy.sparse
+import scipy.sparse.linalg
 
-from conmech.dynamics.statement import (
-    Variables,
-)
-from conmech.helpers import nph
+from conmech.dynamics.statement import Variables
+from conmech.helpers import jxh, nph
 from conmech.solvers._solvers import Solvers
 from conmech.solvers.optimization.optimization import Optimization
 
@@ -30,20 +30,72 @@ class SchurComplement(Optimization):
             friction_bound,
         )
 
-        self.contact_ids = slice(0, body.mesh.contact_nodes_count)
-        self.free_ids = slice(body.mesh.contact_nodes_count, body.mesh.nodes_count)
+        self.contact_ids = slice(0, body.contact_nodes_count)
+        self.free_ids = slice(
+            body.contact_nodes_count, body.nodes_count
+        )  # body.independent_nodes_count
 
         (
             self._node_relations,
             self.free_x_contact,
             self.contact_x_free,
+            self.free_x_free,
             self.free_x_free_inverted,
         ) = self.recalculate_displacement()
 
         self.node_forces_, self.forces_free = self.recalculate_forces()
 
     @staticmethod
-    def calculate_schur_complement_matrices(
+    def calculate_schur_complement_matrices_jax(
+        matrix,  #: jax.interpreters.xla.DeviceArray,
+        dimension: int,
+        contact_indices: slice,
+        free_indices: slice,
+    ):
+
+        size = matrix.shape[0] // dimension
+
+        def get_slice(indices, dim):
+            return slice(dim * size + (indices.start or 0), dim * size + indices.stop)
+
+        def get_sliced(matrix, indices_height, indices_width):
+            if dimension == 1:
+                result_csr = scipy.sparse.csr_matrix(
+                    matrix[get_slice(indices_height, 0), get_slice(indices_width, 0)]
+                )
+            else:
+                blocks = [
+                    [
+                        matrix[get_slice(indices_height, row), get_slice(indices_width, col)]
+                        for col in range(dimension)
+                    ]
+                    for row in range(dimension)
+                ]
+                result_csr = scipy.sparse.bmat(
+                    blocks,
+                    format="csr",  # coo",
+                )
+            return jxh.to_jax_sparse(result_csr)
+
+        contact_x_contact = get_sliced(matrix, contact_indices, contact_indices)
+        free_x_contact = get_sliced(matrix, free_indices, contact_indices)
+        contact_x_free = get_sliced(matrix, contact_indices, free_indices)
+        free_x_free = get_sliced(matrix, free_indices, free_indices)
+
+        free_x_free_inverted = None
+        lhs_boundary = None
+
+        return (
+            contact_x_contact,
+            free_x_contact,
+            contact_x_free,
+            free_x_free,
+            lhs_boundary,
+            free_x_free_inverted,
+        )
+
+    @staticmethod
+    def calculate_schur_complement_matrices_np(
         matrix: np.ndarray, dimension: int, contact_indices: slice, free_indices: slice
     ):
         def get_sliced(matrix_split, indices_height, indices_width):
@@ -59,12 +111,15 @@ class SchurComplement(Optimization):
         contact_x_free = get_sliced(matrix_split, contact_indices, free_indices)
         contact_x_contact = get_sliced(matrix_split, contact_indices, contact_indices)
 
+        # print("Inverting free_x_free...")
+        # free_x_free_inverted = jax.scipy.linalg.inv(free_x_free.todense())
+        # lhs_boundary = (
+        #     contact_x_contact.todense() - contact_x_free @ free_x_free_inverted @ free_x_contact
+        # )
         free_x_free_inverted = np.linalg.inv(free_x_free)
-        matrix_boundary = contact_x_contact - contact_x_free @ (
-            free_x_free_inverted @ free_x_contact
-        )
+        lhs_boundary = contact_x_contact - contact_x_free @ (free_x_free_inverted @ free_x_contact)
 
-        return matrix_boundary, free_x_contact, contact_x_free, free_x_free_inverted
+        return lhs_boundary, free_x_contact, contact_x_free, free_x_free, free_x_free_inverted
 
     @staticmethod
     def calculate_schur_complement_vector(
@@ -79,10 +134,12 @@ class SchurComplement(Optimization):
         vector_contact = nph.stack_column(vector_split[contact_indices, :])
         vector_free = nph.stack_column(vector_split[free_indices, :])
         vector_boundary = vector_contact - (contact_x_free @ (free_x_free_inverted @ vector_free))
+        # s1 = jxh.solve_linear_jax(matrix=free_x_free, vector=vector_free)
+        # vector_boundary = vector_contact - nph.stack_column(contact_x_free @ s1)
         return vector_boundary, vector_free
 
     def recalculate_displacement(self):
-        return SchurComplement.calculate_schur_complement_matrices(
+        return SchurComplement.calculate_schur_complement_matrices_np(
             matrix=self.statement.left_hand_side,
             dimension=self.statement.dimension,
             contact_indices=self.contact_ids,
@@ -98,9 +155,14 @@ class SchurComplement(Optimization):
             contact_x_free=self.contact_x_free,
             free_x_free_inverted=self.free_x_free_inverted,
         )
-        if self.statement.dimension == 2:
-            return node_forces.T, forces_free
-        return node_forces.reshape(-1), forces_free.reshape(-1)
+
+        if self.statement.dimension == 1:
+            node_forces_T = node_forces.reshape(-1)
+            forces_free = forces_free.reshape(-1)
+        else:
+            node_forces_T = node_forces.T
+
+        return np.array(node_forces_T, dtype=np.float64), np.array(forces_free, dtype=np.float64)
 
     def __str__(self):
         return "schur"
@@ -129,19 +191,19 @@ class SchurComplement(Optimization):
         return solution
 
     def truncate_free_nodes(self, initial_guess: np.ndarray) -> np.ndarray:
-        if self.statement.dimension == 2:
-            _result = initial_guess.reshape(2, -1)
-            _result = _result[:, self.contact_ids]
-            _result = _result.reshape(1, -1)
-            result = _result
-            return result
-        return initial_guess[self.contact_ids]
+        if self.statement.dimension != 2:
+            return initial_guess[self.contact_ids]
+        _result = initial_guess.reshape(2, -1)
+        _result = _result[:, self.contact_ids]
+        _result = _result.reshape(1, -1)
+        result = _result
+        return result
 
     def complement_free_nodes(self, truncated_solution: np.ndarray) -> np.ndarray:
-        if self.statement.dimension == 2:
-            _result = truncated_solution.reshape(-1, 1)
-        else:
+        if self.statement.dimension != 2:
             _result = truncated_solution
+        else:
+            _result = truncated_solution.reshape(-1, 1)
 
         _result = self.free_x_contact @ _result
         _result = self.forces_free - _result
@@ -149,15 +211,15 @@ class SchurComplement(Optimization):
         return result
 
     def merge(self, solution_contact: np.ndarray, solution_free: np.ndarray) -> np.ndarray:
-        if self.statement.dimension == 2:
-            u_contact = solution_contact.reshape(2, -1)
-            u_free = solution_free.reshape(2, -1)
-            _result = np.concatenate((u_contact, u_free), axis=1)
-            _result = _result.reshape(1, -1)
+        if self.statement.dimension != 2:
+            _result = np.concatenate((solution_contact, solution_free))
             result = np.squeeze(np.asarray(_result))
             return result
 
-        _result = np.concatenate((solution_contact, solution_free))
+        u_contact = solution_contact.reshape(2, -1)
+        u_free = solution_free.reshape(2, -1)
+        _result = np.concatenate((u_contact, u_free), axis=1)
+        _result = _result.reshape(1, -1)
         result = np.squeeze(np.asarray(_result))
         return result
 

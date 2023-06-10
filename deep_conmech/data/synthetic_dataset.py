@@ -1,15 +1,15 @@
-from typing import Optional
+from queue import Empty
+from typing import Callable
 
 import numpy as np
 
-import deep_conmech.data.interpolation_helpers as interpolation_helpers
-from conmech.helpers import cmh, nph, pkh
-from conmech.mesh.mesh_builders_helpers import get_random_corner_data
+import conmech.helpers.interpolation_helpers as interpolation_helpers
+from conmech.helpers import cmh, lnh, mph, nph
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.schedule import Schedule
 from conmech.scenarios import scenarios
 from conmech.scene.scene import Scene
-from deep_conmech.data import base_dataset
+from conmech.solvers.calculator import Calculator
 from deep_conmech.data.base_dataset import BaseDataset
 from deep_conmech.scene.scene_input import SceneInput
 from deep_conmech.training_config import TrainingConfig
@@ -18,20 +18,29 @@ from deep_conmech.training_config import TrainingConfig
 def generate_mesh_type(config: TrainingConfig):
     if config.td.dimension == 2:
         return interpolation_helpers.choose(
-            [scenarios.M_RECTANGLE, scenarios.M_CIRCLE, scenarios.M_POLYGON]  # "pygmsh_spline"
+            [
+                scenarios.M_RECTANGLE,
+                scenarios.M_CIRCLE,
+            ]  # , scenarios.M_POLYGON, scenarios.M_SPLINE]
         )
     else:
         return interpolation_helpers.choose(
-            [scenarios.M_CUBE_3D, scenarios.M_BALL_3D, scenarios.M_POLYGON_3D]
+            [scenarios.M_BALL_3D]  # scenarios.M_CUBE_3D, , scenarios.M_POLYGON_3D]
         )
 
 
-def generate_base_scene(base: np.ndarray, layers_count: int, config: TrainingConfig):
-    corner_vectors = interpolation_helpers.get_corner_vectors_all(
+def generate_base_scene(base: np.ndarray, config: TrainingConfig):
+    initial_nodes_corner_vectors = interpolation_helpers.generate_corner_vectors(
         dimension=config.td.dimension, scale=config.td.initial_corners_scale
     )
-
-    corner_mesh_data = get_random_corner_data() if config.td.adaptive_training_mesh else None
+    mesh_corner_scalars = (
+        None
+        if config.td.adaptive_training_mesh_scale is None
+        else interpolation_helpers.generate_mesh_corner_scalars(
+            dimension=config.td.dimension, scale=config.td.adaptive_training_mesh_scale
+        )
+    )
+    switch_orientation = interpolation_helpers.decide(0.5)
     scene = SceneInput(
         mesh_prop=MeshProperties(
             dimension=config.td.dimension,
@@ -40,120 +49,106 @@ def generate_base_scene(base: np.ndarray, layers_count: int, config: TrainingCon
             scale=[config.td.train_scale],
             initial_base=base,
             mean_at_origin=True,
-            corners_vector=corner_vectors,
-            corner_mesh_data=corner_mesh_data,
+            switch_orientation=switch_orientation,
+            initial_nodes_corner_vectors=initial_nodes_corner_vectors,
+            mesh_corner_scalars=mesh_corner_scalars,
         ),
         body_prop=scenarios.default_body_prop,
         obstacle_prop=scenarios.default_obstacle_prop,
         schedule=Schedule(final_time=config.td.final_time),
-        normalize_by_rotation=config.normalize_by_rotation,
         create_in_subprocess=False,
-        layers_count=layers_count,
         with_schur=False,
     )
     scene.unset_randomization()
-    scene.clear_for_save()
     return scene
 
 
 def generate_forces(config: TrainingConfig, scene: Scene, base: np.ndarray):
-    forces = interpolation_helpers.interpolate_four(
-        nodes=scene.mesh.initial_nodes,
+    forces = interpolation_helpers.interpolate_corners(
+        initial_nodes=scene.initial_nodes,
         mean_scale=config.td.forces_random_scale,
         corners_scale_proportion=config.td.corners_scale_proportion,
         base=base,
-        interpolate_rotate=False,
         zero_out_proportion=config.td.zero_forces_proportion,
     )
     return forces
 
 
 def generate_displacement_old(config: TrainingConfig, scene: Scene, base: np.ndarray):
-    displacement_old = interpolation_helpers.interpolate_four(
-        nodes=scene.mesh.initial_nodes,
+    displacement_old = interpolation_helpers.interpolate_corners(
+        initial_nodes=scene.initial_nodes,
         mean_scale=config.td.displacement_random_scale,
         corners_scale_proportion=config.td.corners_scale_proportion,
         base=base,
-        interpolate_rotate=False,
         zero_out_proportion=config.td.zero_displacement_proportion,
     )
     return displacement_old
 
 
 def generate_velocity_old(config: TrainingConfig, scene: Scene, base: np.ndarray):
-    interpolate_rotate = interpolation_helpers.decide(config.td.rotate_velocity_proportion)
-    velocity_old = interpolation_helpers.interpolate_four(
-        nodes=scene.mesh.initial_nodes,
+    velocity_old = interpolation_helpers.interpolate_corners(
+        initial_nodes=scene.initial_nodes,
         mean_scale=config.td.velocity_random_scale,
         corners_scale_proportion=config.td.corners_scale_proportion,
         base=base,
-        interpolate_rotate=interpolate_rotate,
         zero_out_proportion=config.td.zero_velocity_proportion,
     )
     return velocity_old
 
 
 def generate_obstacles(config: TrainingConfig, scene: SceneInput):
-    obstacle_nodes_unnormaized = nph.generate_uniform_circle(
-        rows=1,
-        columns=scene.mesh.dimension,
-        low=config.td.obstacle_origin_min_scale,
-        high=config.td.obstacle_origin_max_scale,
-    )
+    obstacle_nodes_unnormaized = np.array([[10.0, 0.1, 0.1]])
+    #  nph.generate_uniform_circle(
+    #     rows=1,
+    #     columns=scene.dimension,
+    #     low=config.td.obstacle_origin_min_scale,
+    #     high=config.td.obstacle_origin_max_scale,
+    # )
     obstacle_nodes = obstacle_nodes_unnormaized + scene.mean_moved_nodes
     obstacle_normals_unnormaized = -obstacle_nodes_unnormaized
     return np.stack((obstacle_normals_unnormaized, obstacle_nodes))
-
-
-def generate_base(config: TrainingConfig):
-    dimension = config.td.dimension
-    base = nph.generate_normal(rows=dimension, columns=dimension, scale=1)
-    base = nph.normalize_euclidean_numba(base)
-    base = nph.orthogonalize_gram_schmidt(base)
-    base = nph.normalize_euclidean_numba(base)  # second time for numerical stability
-    return base
 
 
 class SyntheticDataset(BaseDataset):
     def __init__(
         self,
         description: str,
-        layers_count: int,
-        load_features_to_ram: bool,
-        load_targets_to_ram: bool,
-        randomize_at_load: bool,
+        use_jax: bool,
+        load_data_to_ram: bool,
+        randomize: bool,
         with_scenes_file: bool,
         config: TrainingConfig,
+        rank: int,
+        world_size: int,
+        device_count: int,
+        item_fn: Callable = None,
     ):
-        num_workers = config.synthetic_generation_workers
         super().__init__(
             description=f"{description}_synthetic",
+            use_jax=use_jax,
             dimension=config.td.dimension,
-            data_count=config.td.batch_size * config.td.synthetic_batches_in_epoch,
-            layers_count=layers_count,
-            randomize_at_load=randomize_at_load,
-            num_workers=num_workers,
-            load_features_to_ram=load_features_to_ram,
-            load_targets_to_ram=load_targets_to_ram,
+            data_count=config.td.dataset_size,
+            solve_function=Calculator.solve,
+            load_data_to_ram=load_data_to_ram,
+            randomize=randomize,
+            num_workers=config.synthetic_generation_workers,
             with_scenes_file=with_scenes_file,
             config=config,
+            rank=rank,
+            world_size=world_size,
+            device_count=device_count,
+            item_fn=item_fn,
         )
-
-        if self.data_count % num_workers != 0:
-            raise Exception("Cannot divide data generation work")
-        self.scenes_part_count = int(self.data_count / num_workers)
-
-        self.initialize_data()
 
     @property
     def data_size_id(self):
-        return f"s:{self.data_count}_a:{self.config.td.adaptive_training_mesh}"
+        return f"s:{self.data_count}"
 
-    def generate_scene(self, index: int):
-        _ = index
-
-        base = generate_base(self.config)
-        scene = generate_base_scene(base=base, layers_count=self.layers_count, config=self.config)
+    def generate_scene(self):
+        base = lnh.generate_base(self.config.td.dimension)
+        scene = generate_base_scene(base=base, config=self.config)
+        if self.randomize:
+            scene.set_randomization(self.config)
 
         obstacles_unnormalized = generate_obstacles(self.config, scene)
         forces = generate_forces(self.config, scene, base)
@@ -165,65 +160,57 @@ class SyntheticDataset(BaseDataset):
         )
         scene.set_displacement_old(displacement_old)
         scene.set_velocity_old(velocity_old)
-        scene.prepare(forces)
+        # scene.prepare(forces)
 
-        # exact_normalized_a_torch = thh.to_torch_double(Calculator.solve(scene))
-        exact_normalized_a_torch = None
+        scene.update_reduced()
 
-        return scene, exact_normalized_a_torch
+        scene, acceleration = self.solve_and_prepare_scene(scene, forces)
+        return scene
 
-    def generate_data_process(self, num_workers, process_id):
-        assigned_data_range = base_dataset.get_process_data_range(
-            process_id, self.scenes_part_count
-        )
-        tqdm_description = f"Process {process_id} - generating data"
-        self.generate_data_internal(
-            assigned_data_range=assigned_data_range,
-            tqdm_description=tqdm_description,
-            position=process_id,
-        )
+    def generate_data(self):
+        self.generate_data_process()
+        # mph.run_process(self.generate_data_process)
+        # done = mph.run_processes(self.generate_data_process, num_workers=self.num_workers)
+        # if not done:
+        #     print("NOT DONE")
 
-    def generate_data_simple(self):
-        assigned_data_range = range(self.scenes_part_count)
-        tqdm_description = "Generating data"
-        self.generate_data_internal(
-            assigned_data_range=assigned_data_range,
-            tqdm_description=tqdm_description,
-            position=None,
-        )
+    def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
+        assigned_data_range = range(process_id, self.data_count, num_workers)
 
-    def generate_data_internal(
-        self, assigned_data_range, tqdm_description: str, position: Optional[int]
-    ):
+        tqdm_description = f"Process {process_id+1}/{num_workers} - generating data"
         step_tqdm = cmh.get_tqdm(
             assigned_data_range,
             desc=tqdm_description,
             config=self.config,
-            position=position,
+            position=process_id,
         )
 
-        scenes_file, indices_file = pkh.open_files_append(self.scenes_data_path)
-        with scenes_file, indices_file:
-            for index in step_tqdm:
-                if base_dataset.is_memory_overflow(
-                    config=self.config,
-                    step_tqdm=step_tqdm,
-                    tqdm_description=tqdm_description,
-                ):
-                    return False
+        def generate_data_inner(queue):
+            while not self.is_synthetic_generation_memory_overflow:
+                queue.put(self.generate_scene())
 
-                scene, exact_normalized_a_torch = self.generate_scene(index)
-                _ = exact_normalized_a_torch
+        up_queue = mph.get_queue()
+        # inner_process = mph.start_process(generate_data_inner, up_queue)
+        for index in step_tqdm:
+            scene = self.generate_scene()
+            while False:  # True:
+                try:
+                    scene = up_queue.get(timeout=30.0)
+                    break
+                except Empty:
+                    if not inner_process.is_alive():
+                        print("Process terminated, restarting...")
+                        inner_process = mph.start_process(generate_data_inner, up_queue)
 
-                pkh.append_data(data=scene, data_file=scenes_file, indices_file=indices_file)
-
-                self.check_and_print(
-                    len(assigned_data_range),
-                    index,
-                    scene,
-                    step_tqdm,
-                    tqdm_description,
-                )
+            self.safe_save_scene(scene=scene, data_path=self.scenes_data_path)
+            self.check_and_print(
+                all_data_count=self.data_count,
+                current_index=index,
+                scene=scene,
+                step_tqdm=step_tqdm,
+                tqdm_description=tqdm_description,
+            )
+        # inner_process.kill()
 
         step_tqdm.set_description(f"{step_tqdm.desc} - done")
         return True

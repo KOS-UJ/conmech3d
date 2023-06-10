@@ -1,14 +1,16 @@
 # deep conmech
-psutil>=5.9.0
-pandas>=1.4.1
+psutil==5.9.0
 
-torch>=1.11.0
-torch-geometric>=2.0.4
-torch-scatter>=2.0.9
-torch-sparse>=0.6.13
-torch-cluster>=1.6.0
-torch-spline-conv>=1.2.1
-tensorboard>=2.8.0
+flax==0.6.0
 
-# TF dataset saving
-#tensorflow>=2.8.0
+torch==1.11
+torch-geometric==2.2.0
+torch-scatter==2.1.0
+torch-sparse==0.6.15
+torch-cluster==1.6.0
+torch-spline-conv==1.2.1
+
+tensorflow==2.10.0
+
+tensorboard==2.10.0
+netron #==6.3.7

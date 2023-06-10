@@ -1,45 +1,42 @@
+from ctypes import ArgumentError
+
 import numpy as np
 
 from conmech.properties.mesh_properties import MeshProperties
-from deep_conmech.data.interpolation_helpers import interpolate_nodes
+from conmech.helpers import interpolation_helpers
 
 
-def get_random_corner_data():
-    return np.random.rand(4).reshape(-1, 1)
-    # random_data = np.zeros(4) #random_data[1] = 1.
+def get_mesh_corner_vectors(mesh_prop: MeshProperties):
+    return 1.0 / (mesh_prop.mesh_corner_scalars * mesh_prop.mesh_density_x)
 
 
-def get_random_corner_mesh_size(mesh_prop: MeshProperties):
-    mesh_density = mesh_prop.mesh_density_x
-    scale = mesh_density * 0.8
-    corner_data = (mesh_prop.corner_mesh_data * 2.0 * scale) - scale
-    return 1.0 / (mesh_density + corner_data)
+def get_mesh_size_callback(mesh_prop: MeshProperties):
+    if mesh_prop.mesh_corner_scalars is None:
+        mesh_size = 1.0 / mesh_prop.mesh_density_x
+        return lambda dim, tag, x, y, z, *_: mesh_size
+
+    if mesh_prop.scale_x != 1 or mesh_prop.scale_y != 1 or mesh_prop.scale_z != 1:
+        raise ArgumentError
+
+    corner_vectors = get_mesh_corner_vectors(mesh_prop=mesh_prop)
+    return interpolation_helpers.get_mesh_callback(corner_vectors)
 
 
-# CORNERS left, bottom, right, top
-def set_mesh_size(geom, mesh_prop: MeshProperties):
-    if mesh_prop.corner_mesh_data is not None:
-        if mesh_prop.dimension != 2:
-            raise NotImplementedError
-        corner_vectors = get_random_corner_mesh_size(mesh_prop=mesh_prop)
-        callback = lambda dim, tag, x, y, z, *_: interpolate_nodes(
-            scaled_nodes=np.array([[x / mesh_prop.scale_x, y / mesh_prop.scale_y]]),
-            corner_vectors=corner_vectors,
-        ).item()
-    else:
-        callback = lambda dim, tag, x, y, z, *_: 1.0 / mesh_prop.mesh_density_x
-
-    geom.set_mesh_size_callback(callback)
+def normalize(nodes: np.ndarray):
+    v_min = np.min(nodes)
+    v_max = np.max(nodes)
+    return (nodes - v_min) / (v_max - v_min)
 
 
-def normalize_nodes(nodes):
-    nodes = nodes - np.min(nodes, axis=0)
-    nodes = nodes / np.max(nodes, axis=0)
-    return nodes
-
-
-def get_nodes_and_elements(geom, dim):
+def get_nodes_and_elements(geom, dimension: int):
     geom_mesh = geom.generate_mesh()
-    nodes = geom_mesh.points.copy()
+    points = geom_mesh.points.copy()
+    nodes = points[:, :dimension]
     elements = geom_mesh.cells[-2].data.astype("long").copy()
-    return nodes[:, :dim], elements
+    return nodes, elements
+
+
+def get_normalized_nodes_and_elements(geom, dimension: int):
+    initial_nodes, elements = get_nodes_and_elements(geom, dimension)
+    nodes = normalize(initial_nodes)
+    return nodes, elements

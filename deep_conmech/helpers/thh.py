@@ -1,19 +1,23 @@
 """
 torch helpers
 """
+import jax
 import numpy as np
 import torch
-
-from deep_conmech import training_config
-from deep_conmech.training_config import TrainingConfig
+import torch.utils
 
 
-def device(training_config: TrainingConfig):
-    return torch.device(training_config.device)
+def convert_tensor_to_jax(x):
+    # return jax.numpy.array(x)
+    return jax.dlpack.from_dlpack(torch.utils.dlpack.to_dlpack(x))
 
 
-def get_device_id():
-    return "cuda" if torch.cuda.is_available() and (training_config.TEST is False) else "cpu"
+def convert_jax_to_tensor(x):
+    return set_precision(torch.utils.dlpack.from_dlpack(jax.dlpack.to_dlpack(x)))
+
+
+def convert_jax_to_tensor_set_precision(x):
+    return set_precision(convert_jax_to_tensor(x))
 
 
 def to_torch_set_precision(data: np.ndarray):
@@ -56,8 +60,18 @@ def max_norm(data):
     return torch.max(torch.linalg.norm(data, axis=1))  # -1 ?
 
 
-def rmse_torch(predicted, exact):
-    return torch.sqrt(torch.mean(torch.linalg.norm(predicted - exact, axis=-1) ** 2))
+def mean_square_error_torch(predicted, exact):
+    return torch.mean(torch.linalg.norm(predicted - exact, axis=-1) ** 2)
+
+
+def root_mean_square_error_torch(predicted, exact):
+    return torch.sqrt(mean_square_error_torch(predicted, exact))
+
+
+def mean_error_torch(predicted, exact):
+    return torch.mean(
+        torch.linalg.norm(predicted - exact, axis=-1)  # / torch.linalg.norm(exact, axis=-1)
+    )
 
 
 class MaxData:

@@ -1,87 +1,40 @@
 import numba
 import numpy as np
 
-from conmech.helpers import nph
+from conmech.helpers import cmh
 from conmech.mesh import mesh_builders
+from conmech.mesh.boundaries import Boundaries
 from conmech.mesh.boundaries_description import BoundariesDescription
 from conmech.mesh.boundaries_factory import BoundariesFactory
-from conmech.mesh.boundaries import Boundaries
 from conmech.properties.mesh_properties import MeshProperties
-
-
-@numba.njit
-def get_edges_matrix(nodes_count: int, elements: np.ndarray):
-    edges_matrix = np.zeros((nodes_count, nodes_count), dtype=np.int32)
-    element_vertices_number = len(elements[0])
-    for element in elements:  # TODO: #65 prange?
-        for i in range(element_vertices_number):
-            for j in range(element_vertices_number):
-                if i != j:
-                    edges_matrix[element[i], element[j]] += 1.0
-    return edges_matrix
-
-
-@numba.njit
-def get_edges_list_numba(edges_matrix):
-    nodes_count = edges_matrix.shape[0]
-    edges = np.array(
-        [
-            (i, j)
-            for i, j in np.ndindex((nodes_count, nodes_count))
-            if j > i and edges_matrix[i, j] > 0
-        ],
-        dtype=np.int64,
-    )
-    return edges
 
 
 @numba.njit
 def remove_unconnected_nodes_numba(nodes, elements):
     nodes_count = len(nodes)
+    present_nodes = np.zeros(nodes_count, dtype=numba.boolean)
+    for element in elements:
+        for node in element:
+            present_nodes[node] = True
+
     index = 0
+    removed = 0
     while index < nodes_count:
-        if index in elements:
+        if present_nodes[index + removed]:
             index += 1
         else:
+            # print("Removing node...")
             nodes = np.vstack((nodes[:index], nodes[index + 1 :]))
             for i in range(elements.shape[0]):
                 for j in range(elements.shape[1]):
                     if elements[i, j] > index:
                         elements[i, j] -= 1
+            removed += 1
             nodes_count -= 1
     return nodes, elements
 
 
-@numba.njit
-def get_closest_to_axis_numba(nodes, variable):
-    min_error = 1.0
-    final_i, final_j = 0, 0
-    nodes_count = len(nodes)
-    for i in range(nodes_count):
-        for j in range(i + 1, nodes_count):
-            error = nph.euclidean_norm_numba(
-                np.delete(nodes[i], variable) - np.delete(nodes[j], variable)
-            )
-            if error < min_error:
-                min_error, final_i, final_j = error, i, j
-
-    correct_order = nodes[final_i, variable] < nodes[final_j, variable]
-    indices = (final_i, final_j) if correct_order else (final_j, final_i)
-    return np.array([min_error, indices[0], indices[1]])
-
-
-@numba.njit
-def get_base_seed_indices_numba(nodes):
-    dim = nodes.shape[1]
-    base_seed_indices = np.zeros((dim, 2), dtype=np.int64)
-    errors = np.zeros(dim)
-    for i in range(dim):
-        result = get_closest_to_axis_numba(nodes, i)
-        errors[i] = result[0]
-        base_seed_indices[i] = result[1:].astype(np.int64)
-    return base_seed_indices, int(np.argmin(errors))
-
-
+# pylint: disable=R0904
 class Mesh:
     def __init__(
         self,
@@ -97,10 +50,10 @@ class Mesh:
 
         self.boundaries: Boundaries
 
-        self.base_seed_indices: np.ndarray
-        self.closest_seed_index: int
+        def fun_data():
+            self.reinitialize_data(mesh_prop, boundaries_description, create_in_subprocess)
 
-        self.reinitialize_data(mesh_prop, boundaries_description, create_in_subprocess)
+        cmh.profile(fun_data, baypass=True)
 
     def remesh(self, boundaries_description, create_in_subprocess):
         self.reinitialize_data(self.mesh_prop, boundaries_description, create_in_subprocess)
@@ -123,25 +76,27 @@ class Mesh:
             self.elements,
             self.boundaries,
         ) = BoundariesFactory.identify_boundaries_and_reorder_nodes(
-            unordered_nodes, unordered_elements, boundaries_description
+            unordered_nodes=unordered_nodes,
+            unordered_elements=unordered_elements,
+            boundaries_description=boundaries_description,
         )
-        self.base_seed_indices, self.closest_seed_index = get_base_seed_indices_numba(
-            self.initial_nodes
-        )
-        edges_matrix = get_edges_matrix(nodes_count=len(self.initial_nodes), elements=self.elements)
-        self.edges = get_edges_list_numba(edges_matrix)
+        self.directional_edges = self.get_directional_edges()
 
-    def normalize_shift(self, vectors):
-        _ = self
-        return vectors - np.mean(vectors, axis=0)
+    def get_directional_edges(self):
+        size = self.elements.shape[1]
+        directional_edges = np.array(
+            list(
+                {(e[i], e[j]) for i, j in np.ndindex((size, size)) if j != i for e in self.elements}
+            ),
+            dtype=np.int64,
+        )  # j > i - non-directional edges
+        return directional_edges
 
     @property
-    def normalized_initial_nodes(self):
-        return self.normalize_shift(self.initial_nodes)
-
-    @property
-    def input_initial_nodes(self):
-        return self.normalized_initial_nodes
+    def edges_number(self):
+        if self.directional_edges is None:
+            raise AttributeError()
+        return len(self.directional_edges) // 2
 
     @property
     def boundary_surfaces(self):
@@ -228,6 +183,10 @@ class Mesh:
         return len(self.initial_nodes)
 
     @property
+    def elements_count(self):
+        return len(self.elements)
+
+    @property
     def boundary_surfaces_count(self):
         return len(self.boundary_surfaces)
 
@@ -236,5 +195,5 @@ class Mesh:
         return self.nodes_count - self.boundary_nodes_count
 
     @property
-    def edges_number(self):
-        return len(self.edges)
+    def centered_initial_nodes(self):
+        return self.initial_nodes - np.mean(self.initial_nodes, axis=0)

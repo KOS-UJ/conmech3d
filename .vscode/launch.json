@@ -1,0 +1,92 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Draft examples 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/draft_examples.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples 2D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_2d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_3d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples temperature 2D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_temperature_2d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Examples temperature 3D",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/examples_temperature_3d.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Temperature 2023",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/temperature_2023.py",
+            "justMyCode": false
+        },
+        {
+            "name": "Train graph",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=train"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "PCA",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=pca"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Visualize graph",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=visualize"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Plot graph",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/deep_conmech/run_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode=plot"
+            ],
+            "justMyCode": false
+            // "sudo": true
+        },
+    ]
+}

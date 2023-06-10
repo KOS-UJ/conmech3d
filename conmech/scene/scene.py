@@ -1,114 +1,28 @@
-from dataclasses import dataclass
 from typing import List, Optional
 
+import jax
+import jax.numpy as jnp
 import numba
 import numpy as np
 
-from conmech.dynamics.dynamics import DynamicsConfiguration
-from conmech.helpers import nph
-from conmech.mesh.boundaries_description import BoundariesDescription
-from conmech.mesh.mesh import Mesh
+from conmech.dynamics.dynamics import DynamicsConfiguration, SolverMatrices
+from conmech.dynamics.factory.dynamics_factory_method import ConstMatrices
+from conmech.helpers import jxh, lnh, nph
+from conmech.helpers.config import SimulationConfig
+from conmech.helpers.interpolation_helpers import interpolate_nodes
+from conmech.helpers.lnh import get_in_base
 from conmech.properties.body_properties import TimeDependentBodyProperties
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.obstacle_properties import ObstacleProperties
 from conmech.properties.schedule import Schedule
-from conmech.scene.body_forces import BodyForces, energy
-from conmech.state.body_position import BodyPosition
-
-
-def get_new_penetration_norm(displacement_step, normals, penetration):
-    projection = nph.elementwise_dot(displacement_step, normals, keepdims=True) + penetration
-    return (projection > 0) * projection
-
-
-def obstacle_resistance_potential_normal(penetration_norm, hardness, time_step):
-    return hardness * 0.5 * (penetration_norm**2) * ((1.0 / time_step) ** 2)
-
-
-def obstacle_resistance_potential_tangential(
-    penetration_norm,
-    tangential_velocity,
-    friction,
-    time_step,
-):
-    return (
-        (penetration_norm > 0)
-        * friction
-        * nph.euclidean_norm(tangential_velocity, keepdims=True)
-        * (1.0 / time_step)
-    )
-
-
-@dataclass
-class IntegrateArguments:
-    velocity: np.ndarray
-    displacement_step: np.ndarray
-    penetration: np.ndarray
-    normals: np.ndarray
-    nodes_volume: np.ndarray
-    hardness: float
-    friction: float
-    time_step: float
-
-
-def integrate(args: IntegrateArguments):
-    penetration_norm = get_new_penetration_norm(
-        args.displacement_step, args.normals, args.penetration
-    )
-    velocity_tangential = nph.get_tangential(args.velocity, args.normals)
-
-    resistance_normal = obstacle_resistance_potential_normal(
-        penetration_norm, args.hardness, args.time_step
-    )
-    resistance_tangential = obstacle_resistance_potential_tangential(
-        args.penetration, velocity_tangential, args.friction, args.time_step
-    )
-    result = (args.nodes_volume * (resistance_normal + resistance_tangential)).sum()
-    return result
-
-
-@dataclass
-class EnergyObstacleArguments:
-    lhs: np.ndarray
-    rhs: np.ndarray
-    boundary_velocity_old: np.ndarray
-    boundary_normals: np.ndarray
-    penetration: np.ndarray
-    surface_per_boundary_node: np.ndarray
-    obstacle_prop: ObstacleProperties
-    time_step: float
-
-
-def get_boundary_integral(acceleration, args: EnergyObstacleArguments):
-    boundary_nodes_count = args.boundary_velocity_old.shape[0]
-    boundary_a = acceleration[:boundary_nodes_count, :]  # TODO: boundary slice
-
-    boundary_v_new = args.boundary_velocity_old + args.time_step * boundary_a
-    boundary_displacement_step = args.time_step * boundary_v_new
-
-    integrate_args = IntegrateArguments(
-        velocity=boundary_v_new,
-        displacement_step=boundary_displacement_step,
-        penetration=args.penetration,
-        normals=args.boundary_normals,
-        nodes_volume=args.surface_per_boundary_node,
-        hardness=args.obstacle_prop.hardness,
-        friction=args.obstacle_prop.friction,
-        time_step=args.time_step,
-    )
-
-    boundary_integral = integrate(integrate_args)
-    return boundary_integral
-
-
-def energy_obstacle(
-    acceleration,
-    args: EnergyObstacleArguments,
-):
-    main_energy = energy(acceleration, args.lhs, args.rhs)
-    boundary_integral = get_boundary_integral(acceleration=acceleration, args=args)
-
-    return main_energy + boundary_integral
+from conmech.scene.body_forces import BodyForces
+from conmech.scene.energy_functions import (
+    EnergyObstacleArguments,
+    _obstacle_resistance_potential_normal,
+    _obstacle_resistance_potential_tangential,
+)
+from conmech.solvers.optimization.schur_complement import SchurComplement
+from conmech.state.body_position import BodyPosition, mesh_normalization_decorator
 
 
 @numba.njit
@@ -122,6 +36,7 @@ def get_closest_obstacle_to_boundary_numba(boundary_nodes, obstacle_nodes):
     return boundary_obstacle_indices
 
 
+# pylint: disable=R0904
 class Scene(BodyForces):
     def __init__(
         self,
@@ -129,38 +44,56 @@ class Scene(BodyForces):
         body_prop: TimeDependentBodyProperties,
         obstacle_prop: ObstacleProperties,
         schedule: Schedule,
-        normalize_by_rotation: bool,
-        create_in_subprocess: bool,
-        with_schur: bool = True,
+        simulation_config: SimulationConfig,
+        with_schur: bool = False,
+        create_in_subprocess: bool = False,
     ):
-        boundaries_description: ... = BoundariesDescription(
-            contact=lambda x: True, dirichlet=lambda x: False
-        )
         super().__init__(
             mesh_prop=mesh_prop,
             body_prop=body_prop,
             schedule=schedule,
+            simulation_config=simulation_config,
             dynamics_config=DynamicsConfiguration(
-                normalize_by_rotation=normalize_by_rotation,
                 create_in_subprocess=create_in_subprocess,
-                with_lhs=True,
+                with_lhs=False,
                 with_schur=with_schur,
             ),
-            boundaries_description=boundaries_description,
         )
         self.obstacle_prop = obstacle_prop
         self.closest_obstacle_indices = None
         self.linear_obstacles: np.ndarray = np.array([[], []])
         self.mesh_obstacles: List[BodyPosition] = []
+        self.energy_functions = None
+        self.lifted_acceleration = None
 
-        self.clear()
+        self.step = 0
+        self.norm_lifted_new_displacement = None
+        self.recentered_norm_lifted_new_displacement = None
+
+        self.boundary_obstacle_normals = np.zeros_like(self.boundary_nodes)
+        self.penetration_scalars = np.zeros((self.boundary_nodes_count, 1))
+        self.boundary_obstacle_normals_self = np.zeros_like(self.boundary_nodes)
+        self.penetration_scalars_self = np.zeros((self.boundary_nodes_count, 1))
+        self.self_collisions_mask = np.zeros(self.boundary_nodes_count, dtype=bool)
+
+        self.clear_external_factors()
+        assert not self.is_colliding()
 
     def prepare(self, inner_forces):
         super().prepare(inner_forces)
         if not self.has_no_obstacles:
             self.closest_obstacle_indices = get_closest_obstacle_to_boundary_numba(
-                self.boundary_nodes, self.obstacle_nodes
+                boundary_nodes=self.boundary_nodes,
+                obstacle_nodes=self.obstacle_nodes,
+                # , boundary_normals=self.boundary_normals, boundary_obstacle_normals= self.get_obstacle_normals()
             )
+            self.set_boundary_obstacle_normals_and_penetration_scalars()
+
+    def clean_acceleration(self, normalized_acceleration):
+        _ = self
+        if normalized_acceleration is None:
+            return None
+        return normalized_acceleration
 
     def normalize_and_set_obstacles(
         self,
@@ -173,41 +106,44 @@ class Scene(BodyForces):
                 self.linear_obstacles[0, ...]
             )
         if all_mesh_prop is not None:
-            boundaries_description: ... = BoundariesDescription(
-                contact=lambda x: True, dirichlet=lambda x: False
-            )
             self.mesh_obstacles.extend(
-                [
-                    BodyPosition(
-                        mesh_prop=mesh_prop,
-                        schedule=None,
-                        normalize_by_rotation=False,
-                        boundaries_description=boundaries_description,
-                    )
-                    for mesh_prop in all_mesh_prop
-                ]
+                [BodyPosition(mesh_prop=mesh_prop, schedule=None) for mesh_prop in all_mesh_prop]
             )
 
-    def get_normalized_energy_obstacle_np(self, temperature=None):
-        normalized_rhs_boundary, normalized_rhs_free = self.get_all_normalized_rhs_np(temperature)
-        penetration = self.get_penetration()
+    def get_energy_obstacle_args_for_jax(self, energy_functions, temperature=None):
+        args, rhs_acceleration = self._get_initial_energy_obstacle_args_for_jax(temperature)
         args = EnergyObstacleArguments(
-            lhs=self.solver_cache.lhs_boundary,
-            rhs=normalized_rhs_boundary,
-            boundary_velocity_old=self.norm_boundary_velocity_old,
-            boundary_normals=self.get_normalized_boundary_normals(),
-            penetration=penetration,
-            surface_per_boundary_node=self.get_surface_per_boundary_node(),
-            obstacle_prop=self.obstacle_prop,
-            time_step=self.time_step,
-        )
-        return (
-            lambda normalized_boundary_a_vector: energy_obstacle(
-                acceleration=nph.unstack(normalized_boundary_a_vector, self.mesh.dimension),
-                args=args,
+            lhs_acceleration_jax=self.solver_cache.lhs_acceleration_jax,  # .todense(),
+            rhs_acceleration=rhs_acceleration,
+            boundary_velocity_old=args.boundary_velocity_old,
+            boundary_normals=args.boundary_normals,
+            boundary_obstacle_normals=args.boundary_obstacle_normals,
+            boundary_obstacle_normals_self=args.boundary_obstacle_normals_self,
+            initial_penetration=args.initial_penetration,
+            initial_penetration_self=args.initial_penetration_self,
+            surface_per_boundary_node=args.surface_per_boundary_node,
+            body_prop=args.body_prop,
+            obstacle_prop=args.obstacle_prop,
+            time_step=jnp.array(args.time_step),
+            element_initial_volume=jnp.array(self.matrices.element_initial_volume),
+            dx_big_jax=self.matrices.dx_big_jax,  # .todense(),
+            base_displacement=args.base_displacement,
+            base_energy_displacement=jax.jit(energy_functions.compute_displacement_energy)(
+                displacement=args.base_displacement,
+                dx_big_jax=self.matrices.dx_big_jax,
+                element_initial_volume=self.matrices.element_initial_volume,
+                body_prop=args.body_prop,
             ),
-            normalized_rhs_free,
+            base_velocity=args.base_velocity,
+            base_energy_velocity=jax.jit(energy_functions.compute_velocity_energy)(
+                velocity=args.base_velocity,
+                dx_big_jax=self.matrices.dx_big_jax,
+                element_initial_volume=self.matrices.element_initial_volume,
+                body_prop=args.body_prop,
+            ),
+            displacement_old=args.displacement_old,
         )
+        return args
 
     @property
     def linear_obstacle_nodes(self):
@@ -227,7 +163,7 @@ class Scene(BodyForces):
     def get_obstacle_normals(self):
         all_normals = []
         all_normals.extend(list(self.linear_obstacle_normals))
-        all_normals.extend([m.get_boundary_normals() for m in self.mesh_obstacles])
+        all_normals.extend([m.boundary_normals for m in self.mesh_obstacles])
         return np.vstack(all_normals)
 
     @property
@@ -241,106 +177,331 @@ class Scene(BodyForces):
     def get_norm_obstacle_normals(self):
         return self.normalize_rotate(self.get_obstacle_normals())
 
-    def get_boundary_obstacle_normals(self):
-        return self.get_obstacle_normals()[self.closest_obstacle_indices]
-
-    def get_norm_boundary_obstacle_normals(self):
-        return self.normalize_rotate(self.get_boundary_obstacle_normals())
-
     @property
     def normalized_obstacle_nodes(self):
         return self.normalize_rotate(self.obstacle_nodes - self.mean_moved_nodes)
 
     @property
     def boundary_velocity_old(self):
-        return self.velocity_old[self.mesh.boundary_indices]
-
-    @property
-    def boundary_a_old(self):
-        return self.acceleration_old[self.mesh.boundary_indices]
+        return self.velocity_old[self.boundary_indices]
 
     @property
     def norm_boundary_velocity_old(self):
-        return self.rotated_velocity_old[self.mesh.boundary_indices]
+        return self.normalized_velocity_old[self.boundary_indices]
 
     @property
     def normalized_boundary_nodes(self):
-        return self.normalized_nodes[self.mesh.boundary_indices]
+        return self.normalized_nodes[self.boundary_indices]
 
-    def get_penetration(self):
-        return (-1) * nph.elementwise_dot(
-            (self.normalized_boundary_nodes - self.norm_boundary_obstacle_nodes),
-            self.get_norm_boundary_obstacle_normals(),
+    def set_boundary_obstacle_normals_and_penetration_scalars(self):
+        self.boundary_obstacle_normals[:] = self.get_obstacle_normals()[
+            self.closest_obstacle_indices
+        ]
+        self.penetration_scalars[:] = (-1) * nph.elementwise_dot(
+            (self.boundary_nodes - self.boundary_obstacle_nodes),
+            self.boundary_obstacle_normals,
         ).reshape(-1, 1)
+        if self.simulation_config.with_self_collisions:
+            self.apply_self_colisions()
 
-    def get_penetration_norm(self):
-        penetration = self.get_penetration()
+    def apply_self_colisions(self):
+        self.boundary_obstacle_normals_self = np.zeros_like(self.boundary_nodes)
+        self.penetration_scalars_self = np.zeros((self.boundary_nodes_count, 1))
+
+        scalar = 1.
+
+        closest_indices, _, closest_weights = interpolate_nodes(
+            base_nodes=self.moved_nodes,
+            base_elements=self.elements,
+            query_nodes=self.boundary_nodes,
+        )
+        self.self_collisions_mask[:] = (closest_weights > 0.001).all(axis=1)
+
+        if self.self_collisions_mask.any():
+            closest_boundary_indices = self.get_inside_data(
+                closest_indices, closest_weights, self.self_collisions_mask
+            )
+            self.penetration_scalars_self[self.self_collisions_mask] = (
+                scalar
+                * (-1)
+                * nph.elementwise_dot(
+                    (
+                        self.boundary_nodes[self.self_collisions_mask]
+                        - self.boundary_nodes[closest_boundary_indices]
+                    ),
+                    self.boundary_normals[closest_boundary_indices],
+                ).reshape(-1, 1)
+            )
+            # print(self.penetration_scalars_self.min(), self.penetration_scalars_self.max())
+
+            self.boundary_obstacle_normals_self[self.self_collisions_mask] = self.boundary_normals[
+                closest_boundary_indices
+            ]
+
+    def get_norm_boundary_obstacle_normals(self):
+        return self.normalize_rotate(self.boundary_obstacle_normals)
+
+    def get_norm_boundary_obstacle_normals_self(self):
+        return self.normalize_rotate(self.boundary_obstacle_normals_self)
+
+    def get_inside_data(self, closest_indices, closest_weights, self_collisions_mask):
+        initial_inside_nodes = nph.elementwise_dot(
+            self.initial_nodes[closest_indices[self_collisions_mask]],
+            closest_weights[self_collisions_mask].reshape(-1, self.mesh_prop.dimension + 1, 1),
+        )
+        closest_boundary_indices = get_closest_obstacle_to_boundary_numba(
+            initial_inside_nodes, self.initial_boundary_nodes
+        )
+        return closest_boundary_indices
+
+    def get_penetration_positive(self):
+        penetration = self.penetration_scalars
         return penetration * (penetration > 0)
 
     def __get_boundary_penetration(self):
-        return (-1) * self.get_penetration_norm() * self.get_boundary_normals()
+        return self.get_penetration_positive() * self.boundary_obstacle_normals
 
     def get_normalized_boundary_penetration(self):
         return self.normalize_rotate(self.__get_boundary_penetration())
 
-    def get_damping_input(self):
-        return self.obstacle_prop.hardness * self.get_normalized_boundary_penetration()
-
     def __get_boundary_v_tangential(self):
-        return nph.get_tangential(self.boundary_velocity_old, self.get_boundary_normals())
+        return nph.get_tangential(self.boundary_velocity_old, self.boundary_normals)
 
     def __get_normalized_boundary_v_tangential(self):
-        return nph.get_tangential(
-            self.norm_boundary_velocity_old, self.get_normalized_boundary_normals()
+        return nph.get_tangential_numba(
+            self.norm_boundary_velocity_old, np.array(self.get_normalized_boundary_normals_jax())
         )
 
-    def get_friction_vector(self):
-        return (self.get_penetration() > 0) * np.nan_to_num(
+    def __get_friction_vector(self):
+        return (self.penetration_scalars > 0) * np.nan_to_num(
             nph.normalize_euclidean_numba(self.__get_normalized_boundary_v_tangential())
         )
 
+    def get_normal_response_input(self):
+        return (
+            self.obstacle_prop.hardness * self.get_penetration_positive()
+        )  # self.get_normalized_boundary_penetration()
+
     def get_friction_input(self):
-        return self.obstacle_prop.friction * self.get_friction_vector()
+        return self.obstacle_prop.friction * self.__get_friction_vector()
 
     def get_resistance_normal(self):
-        return obstacle_resistance_potential_normal(
-            self.get_penetration_norm(), self.obstacle_prop.hardness, self.time_step
+        return _obstacle_resistance_potential_normal(
+            self.get_penetration_positive(), self.obstacle_prop.hardness, self.time_step
         )
 
     def get_resistance_tangential(self):
-        return obstacle_resistance_potential_tangential(
-            self.get_penetration_norm(),
+        return _obstacle_resistance_potential_tangential(
+            self.get_penetration_positive(),
             self.__get_boundary_v_tangential(),
-            self.obstacle_prop.friction,
-            self.time_step,
+            friction=self.obstacle_prop.friction,
+            time_step=self.time_step,
+            use_nonconvex_friction_law=self.simulation_config.use_nonconvex_friction_law,
         )
-
-    @staticmethod
-    def complete_mesh_boundary_data_with_zeros(mesh: Mesh, data: np.ndarray):
-        return np.pad(data, ((0, mesh.nodes_count - len(data)), (0, 0)), "constant")
-
-    def complete_boundary_data_with_zeros(self, data: np.ndarray):
-        return Scene.complete_mesh_boundary_data_with_zeros(self.mesh, data)
 
     @property
     def has_no_obstacles(self):
         return self.linear_obstacles.size == 0 and len(self.mesh_obstacles) == 0
 
-    def get_colliding_nodes_indicator(self):
+    def _get_colliding_nodes_indicator(self):
         if self.has_no_obstacles:
-            return np.zeros((self.mesh.nodes_count, 1), dtype=np.int64)
-        return self.complete_boundary_data_with_zeros((self.get_penetration() > 0) * 1)
+            return np.zeros((self.nodes_count, 1), dtype=np.int64)
+        return jxh.complete_data_with_zeros(
+            data=(self.penetration_scalars > 0) * 1, nodes_count=self.nodes_count
+        )
 
     def is_colliding(self):
-        return np.any(self.get_colliding_nodes_indicator())
+        return np.any(self._get_colliding_nodes_indicator())
 
-    def get_colliding_all_nodes_indicator(self):
-        if self.is_colliding():
-            return np.ones((self.mesh.nodes_count, 1), dtype=np.int64)
-        return np.zeros((self.mesh.nodes_count, 1), dtype=np.int64)
+    def prepare_to_save(self):
+        self.energy_functions = None
+        self.matrices = ConstMatrices()
+        # lhs_sparse = self.solver_cache.lhs_sparse
+        self.solver_cache = SolverMatrices()
+        # self.solver_cache.lhs_sparse = lhs_sparse
+        # self.reduced ...
 
-    def clear_for_save(self):
-        self.element_initial_volume = None
-        self.acceleration_operator = None
-        self.thermal_expansion = None
-        self.thermal_conductivity = None
+    @property
+    @mesh_normalization_decorator
+    def normalized_exact_acceleration(self):
+        return self.normalize_rotate(self.exact_acceleration)
+
+    @property
+    @mesh_normalization_decorator
+    def normalized_lifted_acceleration(self):
+        return self.normalize_rotate(self.lifted_acceleration)
+
+    @mesh_normalization_decorator
+    def force_denormalize(self, acceleration):
+        return self.denormalize_rotate(acceleration)
+
+    # @property
+    # @mesh_normalization_decorator
+    # def norm_exact_new_displacement(self):
+    #     return self.to_normalized_displacement(self.exact_acceleration)
+
+    # @property
+    # @mesh_normalization_decorator
+    # def norm_lifted_new_displacement(self):
+    #     return self.to_normalized_displacement(self.lifted_acceleration)
+
+    @property
+    @mesh_normalization_decorator
+    def norm_by_reduced_lifted_new_displacement(self):
+        return self.get_norm_by_reduced_lifted_new_displacement(self.exact_acceleration)
+
+    @mesh_normalization_decorator
+    def get_norm_by_reduced_lifted_new_displacement(self, exact_acceleration):
+        def _normalize_current_reduced(moved_nodes):
+            if hasattr(self, "reduced"):
+                base_scene = self.reduced
+            else:
+                base_scene = self # TODO: Add warning
+            return get_in_base(
+                (moved_nodes - np.mean(base_scene.moved_nodes, axis=0)),
+                base_scene.get_rotation(base_scene.displacement_old),
+            )
+
+        displacement_new = self.to_displacement(exact_acceleration)
+        moved_nodes_new = self.initial_nodes + displacement_new
+        new_normalized_nodes = _normalize_current_reduced(moved_nodes_new)
+        return new_normalized_nodes - self.normalized_initial_nodes
+
+    def to_displacement(self, acceleration):
+        velocity_new = self.velocity_old + self.time_step * acceleration
+        displacement_new = self.displacement_old + self.time_step * velocity_new
+        return displacement_new
+
+    def from_displacement(self, displacement):
+        velocity = (displacement - self.displacement_old) / self.time_step
+        acceleration = (velocity - self.velocity_old) / self.time_step
+        return acceleration
+
+    @mesh_normalization_decorator
+    def to_normalized_displacement(self, acceleration):
+        displacement_new = self.to_displacement(acceleration)
+
+        moved_nodes_new = self.initial_nodes + displacement_new
+        new_normalized_nodes = get_in_base(
+            (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
+            self.get_rotation(displacement_new),
+        )
+        return new_normalized_nodes - self.normalized_initial_nodes
+
+    # @mesh_normalization_decorator
+    # def to_normalized_displacement_rotated(self, acceleration):
+    #     displacement_new = self.to_displacement(acceleration)
+
+    #     moved_nodes_new = self.initial_nodes + displacement_new
+    #     new_normalized_nodes = get_in_base(
+    #         (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
+    #         self.get_rotation(self.displacement_old),
+    #     )
+    #     assert np.allclose(new_normalized_nodes, self.normalize_shift_and_rotate(moved_nodes_new))
+    #     return new_normalized_nodes - self.normalized_initial_nodes
+
+    @mesh_normalization_decorator
+    def to_normalized_displacement_rotated_displaced(self, acceleration):
+        displacement_new = self.to_displacement(acceleration)
+        moved_nodes_new = self.initial_nodes + displacement_new
+        new_normalized_nodes = get_in_base(
+            (moved_nodes_new - np.mean(self.moved_nodes, axis=0)),
+            self.get_rotation(self.displacement_old),
+        )
+        # assert np.allclose(
+        #     new_normalized_nodes,
+        #     self.normalize_rotate(moved_nodes_new - np.mean(self.moved_nodes, axis=0)),
+        # )
+        return new_normalized_nodes - self.normalized_initial_nodes
+
+    # @mesh_normalization_decorator
+    # def from_normalized_displacement_rotated_displaced(self, displacement_new):
+    #     new_normalized_nodes = displacement_new + self.normalized_initial_nodes
+    #     moved_nodes_new = self.denormalize_rotate(new_normalized_nodes) + np.mean(
+    #         self.moved_nodes, axis=0
+    #     )
+    #     displacement_new = moved_nodes_new - self.initial_nodes
+    #     acceleration = self.from_displacement(displacement_new)
+    #     return acceleration
+
+    def get_last_displacement_step(self):
+        return self.displacement_old - self.time_step * self.velocity_old
+
+    def displacement_from_step(self, displacement_step):
+        return self.displacement_old + displacement_step
+
+    def get_centered_nodes(self, displacement):
+        nodes = self.centered_initial_nodes + displacement
+        centered_nodes = lnh.get_in_base(
+            (nodes - nodes.mean(axis=0)), self.get_rotation(displacement)
+        )
+        return centered_nodes
+
+    def get_displacement(self, base, position, base_displacement=None):
+        if base_displacement is None:
+            centered_nodes = self.centered_nodes
+        else:
+            centered_nodes = self.get_centered_nodes(base_displacement)
+        moved_centered_nodes = lnh.get_in_base(centered_nodes, np.linalg.inv(base)) + position
+        displacement = moved_centered_nodes - self.centered_initial_nodes
+        return displacement
+
+    def _get_initial_energy_obstacle_args_for_jax(self, temperature=None):
+        base_velocity = self.normalized_velocity_old
+        base_displacement = self.normalized_displacement_old + self.time_step * base_velocity
+
+        args = EnergyObstacleArguments(
+            lhs_acceleration_jax=None,
+            rhs_acceleration=None,
+            boundary_velocity_old=jnp.asarray(self.norm_boundary_velocity_old),
+            boundary_normals=self.get_normalized_boundary_normals_jax(),
+            boundary_obstacle_normals=jnp.asarray(self.get_norm_boundary_obstacle_normals()),
+            boundary_obstacle_normals_self=jnp.asarray(
+                self.get_norm_boundary_obstacle_normals_self()
+            ),
+            initial_penetration=jnp.asarray(self.penetration_scalars),
+            initial_penetration_self=jnp.asarray(self.penetration_scalars_self),
+            surface_per_boundary_node=self.get_surface_per_boundary_node_jax(),
+            body_prop=self.body_prop.get_tuple(),
+            obstacle_prop=self.obstacle_prop,
+            time_step=self.time_step,
+            element_initial_volume=None,
+            dx_big_jax=None,
+            base_displacement=jnp.asarray(base_displacement),
+            base_energy_displacement=None,
+            base_velocity=jnp.asarray(base_velocity),
+            base_energy_velocity=None,
+            displacement_old=jnp.asarray(self.displacement_old),
+        )
+        rhs_acceleration = self.get_normalized_integrated_forces_column_for_jax(args)
+        if temperature is not None:
+            rhs_acceleration += jnp.array(self.matrices.thermal_expansion.T @ temperature)
+        return args, rhs_acceleration
+
+    def get_all_normalized_rhs_jax(self, temperature=None):
+        normalized_rhs = self.get_normalized_rhs_jax(temperature)
+        (
+            normalized_rhs_boundary,
+            normalized_rhs_free,
+        ) = SchurComplement.calculate_schur_complement_vector(
+            vector=normalized_rhs,
+            dimension=self.dimension,
+            contact_indices=self.contact_indices,
+            free_indices=self.free_indices,
+            free_x_free_inverted=self.solver_cache.free_x_free_inverted,
+            # free_x_free=self.solver_cache.free_x_free,
+            contact_x_free=self.solver_cache.contact_x_free,
+        )
+        return normalized_rhs_boundary, normalized_rhs_free
+
+    def get_normalized_rhs_jax(self, temperature=None):
+        displacement_old_vector = nph.stack_column(self.normalized_displacement_old)
+        velocity_old_vector = nph.stack_column(self.normalized_velocity_old)
+        _, f_vector = self._get_initial_energy_obstacle_args_for_jax(temperature=temperature)
+        rhs = (
+            f_vector
+            - (self.matrices.viscosity + self.matrices.elasticity * self.time_step)
+            @ jnp.array(velocity_old_vector)
+            - self.matrices.elasticity @ jnp.array(displacement_old_vector)
+        )
+        return rhs

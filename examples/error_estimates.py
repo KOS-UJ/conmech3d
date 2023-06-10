@@ -15,18 +15,18 @@ from conmech.state.state import TemperatureState
 def compare(ref: TemperatureState, sol: TemperatureState):
     ut = 0
     tt = 0
-    x = sol.body.mesh.initial_nodes[:, 0]
-    y = sol.body.mesh.initial_nodes[:, 1]
+    x = sol.body.initial_nodes[:, 0]
+    y = sol.body.initial_nodes[:, 1]
 
-    soltri = tri.Triangulation(x, y, triangles=sol.body.mesh.elements)
+    soltri = tri.Triangulation(x, y, triangles=sol.body.elements)
     u1hi = tri.LinearTriInterpolator(soltri, sol.displacement[:, 0])
     u2hi = tri.LinearTriInterpolator(soltri, sol.displacement[:, 1])
     thi = tri.LinearTriInterpolator(soltri, sol.temperature)
 
-    for element in ref.body.mesh.elements:
-        x0 = ref.body.mesh.initial_nodes[element[0]]
-        x1 = ref.body.mesh.initial_nodes[element[1]]
-        x2 = ref.body.mesh.initial_nodes[element[2]]
+    for element in ref.body.elements:
+        x0 = ref.body.initial_nodes[element[0]]
+        x1 = ref.body.initial_nodes[element[1]]
+        x2 = ref.body.initial_nodes[element[2]]
         u1_0 = ref.displacement[element[0], 0]
         u1_1 = ref.displacement[element[1], 0]
         u1_2 = ref.displacement[element[2], 0]

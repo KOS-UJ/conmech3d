@@ -19,7 +19,6 @@ from conmech.scenarios.scenarios import (
 from conmech.simulations import simulation_runner
 from conmech.solvers.calculator import Calculator
 from conmech.state.obstacle import Obstacle
-from deep_conmech.helpers import dch
 from deep_conmech.training_config import TrainingConfig
 
 tf.enable_eager_execution()
@@ -103,10 +102,9 @@ def simulate(config: Config, scenario) -> str:
 def prepare_data(config: TrainingConfig, scenes_path: str):
     all_indices = pkh.get_all_indices(scenes_path)
     data_count = len(all_indices)
-    scenes_file = pkh.open_file_read(scenes_path)
-    with scenes_file:
-        load_function = lambda index: pkh.load_index(
-            index=index, all_indices=all_indices, data_file=scenes_file
+    with pkh.open_file_read(scenes_path) as scenes_file:
+        load_function = lambda index: pkh.load_byte_index(
+            byte_index=all_indices[index], data_file=scenes_file
         )
         base_scene = load_function(index=0)
         elements = base_scene.elements[np.newaxis, ...].astype("int32")
@@ -153,7 +151,7 @@ def prepare_data(config: TrainingConfig, scenes_path: str):
 
 def main():
     config = TrainingConfig()
-    dch.set_memory_limit(config=config)
+    # dch.set_memory_limit(config=config)
     directory = "/home/michal/Desktop/DATA/conmech"
     cmh.recreate_folder(directory)
 

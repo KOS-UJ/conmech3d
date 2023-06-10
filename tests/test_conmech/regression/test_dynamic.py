@@ -3,6 +3,7 @@ Created at 21.08.2019
 """
 
 from dataclasses import dataclass
+import os
 
 import numpy as np
 import pytest
@@ -178,8 +179,8 @@ def test_global_optimization_solver(solving_method, setup, expected_displacement
         initial_velocity=setup.initial_velocity,
     )
 
-    displacement = results[-1].body.mesh.initial_nodes[:] - results[-1].displaced_nodes[:]
-    std_ids = standard_boundary_nodes(runner.body.mesh.initial_nodes, runner.body.mesh.elements)
+    displacement = results[-1].body.initial_nodes[:] - results[-1].displaced_nodes[:]
+    std_ids = standard_boundary_nodes(runner.body.initial_nodes, runner.body.elements)
 
     # print result
     np.set_printoptions(precision=8, suppress=True)

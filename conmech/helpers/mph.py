@@ -2,7 +2,14 @@
 multiprocessing helpers
 """
 import sys
-from multiprocessing import Process, Queue
+from typing import Callable, Tuple
+
+# from multiprocessing import Lock, Process, Queue
+from multiprocess import Lock, Process, Queue
+
+
+def get_lock():
+    return Lock()
 
 
 def is_supported():
@@ -13,13 +20,25 @@ if not is_supported():
     print("Warning: Multiprocessing implemented only for Linux")
 
 
-def run_processes(function, function_args, num_workers):
+def get_queue():
+    return Queue()
+
+
+def start_process(function: Callable, queue: Queue):
+    process = Process(
+        target=function,
+        args=(queue,),
+    )
+    process.start()
+    return process
+
+
+def run_processes(function: Callable, num_workers: int, function_args: Tuple = ()):
     if not is_supported() or num_workers == 1:
         args = function_args + (1, 0)
         return function(*args)
 
     queue = Queue()
-
     processes = [
         Process(
             target=lambda *args: queue.put(function(*args)),
@@ -34,11 +53,6 @@ def run_processes(function, function_args, num_workers):
     for p in processes:
         p.join()
 
-    for _ in processes:
-        done = queue.get()
-        if not done:
-            return False
-
     return True
 
 
@@ -49,7 +63,8 @@ def run_process(function):  # , args
     queue = Queue()
 
     # wrapper = lambda *args : queue.put(function())
-    wrapper = lambda: queue.put(function())
+    def wrapper():
+        return queue.put(function())
 
     process = Process(target=wrapper)
     process.start()

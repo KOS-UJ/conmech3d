@@ -43,12 +43,10 @@ def get_t_scale(
     # TODO: #65 Refactor (repetition from plot_animation)
     temperatures_list = []
     all_indices = pkh.get_all_indices(all_scenes_path)
-    scenes_file = pkh.open_file_read(all_scenes_path)
-    with scenes_file:
+    with pkh.open_file_read(all_scenes_path) as scenes_file:
         for step in range(plot_scenes_count):
-            setting = pkh.load_index(
-                index=step * index_skip,
-                all_indices=all_indices,
+            setting = pkh.load_byte_index(
+                byte_index=all_indices[step * index_skip],
                 data_file=scenes_file,
             )
             temperatures_list.append(setting.t_old)
@@ -59,10 +57,13 @@ def get_t_scale(
 def get_t_data(t_scale: np.ndarray) -> ColorbarSettings:
     # magma plasma cool coolwarm
     lim_small = 0.2
+    lim_medium = 2
     lim_big = 10
 
     if t_scale[0] > -lim_small and t_scale[1] < lim_small:
         return ColorbarSettings(vmin=-lim_small, vmax=lim_small, cmap=plt.cm.cool)  # coolwarm
+    if t_scale[0] > -lim_medium and t_scale[1] < lim_medium:
+        return ColorbarSettings(vmin=-lim_medium, vmax=lim_medium, cmap=plt.cm.coolwarm)
     return ColorbarSettings(vmin=-lim_big, vmax=lim_big, cmap=plt.cm.magma)
 
 
@@ -117,29 +118,20 @@ class AnimationArgs:
     all_indices: List[int]
     scenes_file: BufferedReader
     base_all_indices: Optional[List[int]]
-    base_scenes_file: Optional[BufferedReader]
     animation_tqdm: tqdm.tqdm
 
 
+# @Mesh.normalization_decorator
 def make_animation(get_axs, plot_frame, t_scale):
     def animate(step: int, args: AnimationArgs):
         args.animation_tqdm.update(1)
         args.fig.clf()
         axs = get_axs(args.fig)
-        scene = pkh.load_index(
-            index=step * args.index_skip,
-            all_indices=args.all_indices,
+        byte_index = args.all_indices[step * args.index_skip]
+        scene = pkh.load_byte_index(
+            byte_index=byte_index,
             data_file=args.scenes_file,
         )
-
-        if args.base_scenes_file is not None:
-            base_scene = pkh.load_index(
-                index=step * args.index_skip,
-                all_indices=args.base_all_indices,
-                data_file=args.base_scenes_file,
-            )
-        else:
-            base_scene = None
 
         plot_frame(
             axs=axs,
@@ -147,7 +139,6 @@ def make_animation(get_axs, plot_frame, t_scale):
             scene=scene,
             current_time=step * args.time_skip,
             t_scale=t_scale,
-            base_scene=base_scene,
         )
         return args.fig
 
@@ -161,7 +152,6 @@ class PlotAnimationConfig:
     index_skip: int
     plot_scenes_count: int
     all_scenes_path: str
-    all_calc_scenes_path: Optional[str]
 
 
 def plot_animation(
@@ -176,16 +166,6 @@ def plot_animation(
 
     all_indices = pkh.get_all_indices(plot_config.all_scenes_path)
     scenes_file = pkh.open_file_read(plot_config.all_scenes_path)
-    base_all_indices = (
-        None
-        if plot_config.all_calc_scenes_path is None
-        else pkh.get_all_indices(plot_config.all_calc_scenes_path)
-    )
-    base_scenes_file = (
-        None
-        if plot_config.all_calc_scenes_path is None
-        else pkh.open_file_read(plot_config.all_calc_scenes_path)
-    )
     with scenes_file:
         args = AnimationArgs(
             fig=fig,
@@ -193,8 +173,7 @@ def plot_animation(
             index_skip=plot_config.index_skip,
             all_indices=all_indices,
             scenes_file=scenes_file,
-            base_all_indices=base_all_indices,
-            base_scenes_file=base_scenes_file,
+            base_all_indices=None,
             animation_tqdm=animation_tqdm,
         )
         ani = animation.FuncAnimation(
@@ -205,5 +184,9 @@ def plot_animation(
 
 
 def get_frame_annotation(scene: Scene, current_time):
-    return f"""time: {str(round(current_time, 1))}
-nodes: {str(scene.mesh.nodes_count)}"""
+    description = f"""time: {str(round(current_time, 1))}
+nodes: {str(scene.nodes_count)}
+elements: {str(scene.elements_count)}"""
+    if hasattr(scene, "reduced"):
+        description += f"\nnodes sparse: {str(scene.reduced.nodes_count)}"
+    return description

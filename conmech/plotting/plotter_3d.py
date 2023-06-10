@@ -5,6 +5,7 @@ import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from conmech.helpers.config import Config
+from conmech.mesh.mesh import Mesh
 from conmech.plotting import plotter_common
 from conmech.plotting.plotter_common import PlotAnimationConfig, make_animation
 from conmech.scene.scene import Scene
@@ -71,20 +72,18 @@ def plot_frame(
     axs,
     scene: Scene,
     current_time,
-    base_scene: Optional[Scene] = None,
     t_scale: Optional[List] = None,
 ):
-    _ = base_scene
     for axes in axs:
         plot_subframe(
             axes=axes,
             scene=scene,
-            normalized_data=[
-                scene.normalized_inner_forces,
-                scene.normalized_displacement_old,
-                scene.normalized_velocity_old,
-                scene.normalized_a_old,
-            ],
+            normalized_data={
+                "F": scene.input_forces,
+                "U": scene.input_displacement_old,
+                "V": scene.input_velocity_old,
+                "A": scene.exact_acceleration,
+            },
             t_scale=t_scale,
         )
     draw_parameters(axes=axs[0], scene=scene, current_time=current_time)
@@ -116,8 +115,8 @@ def draw_base_arrows(axes, base):
     axes.quiver(*z, *(base[2]), arrow_length_ratio=0.1, color="g")
 
 
-def plot_subframe(axes, scene: Scene, normalized_data, t_scale):
-    # draw_base_arrows(axes, setting.moved_base)
+def plot_subframe(axes, scene: Scene, normalized_data: dict, t_scale):
+    draw_base_arrows(axes, scene.moved_base)
 
     if isinstance(scene, SceneTemperature):
         cbar_settings = plotter_common.get_t_data(t_scale)
@@ -128,14 +127,29 @@ def plot_subframe(axes, scene: Scene, normalized_data, t_scale):
             cbar_settings=cbar_settings,
         )
     else:
-        plot_mesh(nodes=scene.moved_nodes, scene=scene, color="tab:orange", axes=axes)
+        plot_mesh(nodes=scene.moved_nodes, mesh=scene, color="tab:orange", axes=axes)
     plot_obstacles(axes, scene, "tab:orange")
 
-    shifted_normalized_nodes = scene.normalized_nodes + np.array([0, 2.0, 0])
-    for data in normalized_data:
+    # return
+    if hasattr(scene, "reduced"):
+        shift = np.array([0, 2.0, 1.5])
+        mesh = scene.reduced
+        shifted_nodes = mesh.moved_nodes + shift
+        # layer_inner_forces = scene.approximate_boundary_or_all_from_base(
+        #     layer_number=i, base_values=scene.normalized_inner_forces
+        # )
+        # plot_arrows(starts=shifted_normalized_nodes, vectors=layer_inner_forces, axes=axes)
+        plot_mesh(nodes=shifted_nodes, mesh=mesh, color="tab:red", axes=axes)
+    # return
+
+    shift = np.array([0, 2.0, 0])
+    for key, data in normalized_data.items():
+        shifted_normalized_nodes = scene.normalized_nodes + shift
+        args = dict(color="w", fontsize=4)
+        axes.text(*(shift - 1), s=key, **args)  # zdir=None,
+        plot_mesh(nodes=shifted_normalized_nodes, mesh=scene, color="tab:blue", axes=axes)
         plot_arrows(starts=shifted_normalized_nodes, vectors=data, axes=axes)
-        plot_mesh(nodes=shifted_normalized_nodes, scene=scene, color="tab:blue", axes=axes)
-        shifted_normalized_nodes = shifted_normalized_nodes + np.array([2.5, 0, 0])
+        shift += np.array([2.5, 0, 0])
 
     if isinstance(scene, SceneTemperature):
         plot_temperature(
@@ -175,8 +189,8 @@ def plot_main_temperature(axes, nodes, scene: Scene, cbar_settings):
     )
 
 
-def plot_mesh(nodes, scene: Scene, color, axes):
-    boundary_surfaces_nodes = nodes[scene.boundary_surfaces]
+def plot_mesh(nodes, mesh: Mesh, color, axes):
+    boundary_surfaces_nodes = nodes[mesh.boundary_surfaces]
     axes.add_collection3d(
         Poly3DCollection(
             boundary_surfaces_nodes,
@@ -192,26 +206,30 @@ def plot_obstacles(axes, scene: Scene, color):
     if scene.has_no_obstacles:
         return
     alpha = 0.3
-    node = scene.linear_obstacle_nodes[0]
-    normal = scene.get_obstacle_normals()[0]
+    for mesh in scene.mesh_obstacles:
+        plot_mesh(nodes=mesh.initial_nodes, mesh=mesh, color="tab:blue", axes=axes)
 
-    # a plane is a*x+b*y+c*z+d=0
-    # z = (-d-axes-by) / c
-    # [a,b,c] is the normal. Thus, we have to calculate
-    # d and we're set
-    d = -node.dot(normal)
+    if len(scene.linear_obstacle_nodes > 0):
+        node = scene.linear_obstacle_nodes[0]
+        normal = scene.get_obstacle_normals()[0]
 
-    x_rng = np.arange(-1.2, 11.2, 0.2)
-    y_rng = np.arange(-1.2, 3.2, 0.2)
+        # a plane is a*x+b*y+c*z+d=0
+        # z = (-d-axes-by) / c
+        # [a,b,c] is the normal. Thus, we have to calculate
+        # d and we're set
+        d = -node.dot(normal)
 
-    X, Y = np.meshgrid(x_rng, y_rng)
-    Z = (-normal[0] * X - normal[1] * Y - d) / normal[2]
-    mask = (Z > -1.2) * (Z < 3.2)
+        x_rng = np.arange(-1.2, 11.2, 0.2)
+        y_rng = np.arange(-1.2, 3.2, 0.2)
 
-    axes.plot_surface(X * mask, Y * mask, Z * mask, color=color, alpha=alpha)
-    # axes.plot_surface(X[:,col], Y[:,col], Z[:,col], color=color, alpha=alpha)
+        X, Y = np.meshgrid(x_rng, y_rng)
+        Z = (-normal[0] * X - normal[1] * Y - d) / normal[2]
+        mask = (Z > -1.2) * (Z < 3.2)
 
-    axes.quiver(*node, *normal, color=color, alpha=alpha)
+        axes.plot_surface(X * mask, Y * mask, Z * mask, color=color, alpha=alpha)
+        # axes.plot_surface(X[:,col], Y[:,col], Z[:,col], color=color, alpha=alpha)
+
+        axes.quiver(*node, *normal, color=color, alpha=alpha)
 
 
 def plot_animation(
@@ -221,7 +239,6 @@ def plot_animation(
     index_skip: int,
     plot_scenes_count: int,
     all_scenes_path: str,
-    all_calc_scenes_path: Optional[str],
     t_scale: Optional[np.ndarray] = None,
 ):
     animate = make_animation(get_axs, plot_frame, t_scale)
@@ -235,6 +252,5 @@ def plot_animation(
             index_skip=index_skip,
             plot_scenes_count=plot_scenes_count,
             all_scenes_path=all_scenes_path,
-            all_calc_scenes_path=all_calc_scenes_path,
         ),
     )

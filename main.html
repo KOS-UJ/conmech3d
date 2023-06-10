@@ -1,0 +1,522 @@
+<!--
+Copyright 2021 Matthias Müller - Ten Minute Physics, https://www.youtube.com/channel/UCTG_vrRdKYfrpqCv_WV4eyA
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+
+<head>
+    <title>Three.js simulation</title>
+    <style>
+        body {
+            font-family: verdana;
+            font-size: 15px;
+        }
+
+        .button {
+            background-color: #606060;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            font-size: 12px;
+            margin: 4px 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 
+    <h1>Three.js simulation</h1>
+    <h3>Hold Ctrl to move camera</h3> -->
+    <select id="simulationSelector" onchange="simulationSelected(this.selectedIndex)" class="button"></select>
+    <button id="buttonRun" onclick="run()" class="button"></button>
+    <button onclick="reload()" class="button">Reload</button>
+    <button onclick="speed()" class="button">Change speed</button>
+    <button onclick="toggleNodes()" class="button">Toggle nodes</button>
+    <input type="checkbox" onclick="toggleHiglightNodes()"> Highlight self-colliding nodes
+    <input id="showDenseCheckbox" type="checkbox" onclick="onShowDense()"> Show dense
+    <input id="showReducedCheckbox" type="checkbox" onclick="onShowReduced()"> Show reduced
+    <br><br>
+    <span id="denseNodesCount">0</span> boundary nodes&nbsp;&nbsp;
+    <span id="surfacesCount">0</span> boundary surfaces&nbsp;&nbsp;
+    <span id="animationSpeed"></span> speed&nbsp;&nbsp;
+    <span id="nodesMode"></span> mode&nbsp;&nbsp;
+    <span id="count"></span>&nbsp;&nbsp;
+    <span id="skip"></span>&nbsp;&nbsp;
+    <span id="loadedProgress"></span>
+    <span id="animationProgress"></span>&nbsp;&nbsp;
+    <span id="error"></span>
+
+
+    <br><br>
+    <div id="container"></div>
+
+    <script src="https://unpkg.com/three@0.139.2/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.139.2/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+    </script>
+
+    <script type="module">
+
+        window.onerror = (errorMsg, url, lineNumber) => {
+            alert("Error occured: " + errorMsg);
+            return false;
+        }
+
+        // ------------------------------------------------------------------
+
+        var paused = false;
+        var highlightNodes = false;
+        var nodesMode = 0;
+        var loadedProgress = 0;
+        var animationFrameFloat = 0.0;
+        var animationSpeed = 1.0;
+        var showDense = true;
+        var showReduced = false;
+
+        var scene;
+        var gRenderer;
+        var gCamera;
+        var gCameraControl;
+        var gMouseDown = false;
+
+        var meshes;
+        var animationSkip;
+        var animationCount;
+        var simulationName;
+
+        const output_path = './output';
+
+        const fileLoader = new THREE.FileLoader();
+        const speedSlow = 0.1;
+        const speedNormal = 1.;
+
+        function animationFrame() {
+            return parseInt(animationFrameFloat)
+        }
+
+        window.simulationSelected = async (selectedIndex) => {
+            setRunButton(true);
+            simulationName = simulationSelector.value;
+            animationCount = listFile.steps[selectedIndex];
+            await loadDataAsync();
+            setRunButton(false);
+        }
+        window.reload = () => {
+            location.reload();
+        }
+        window.run = () => {
+            setRunButton(!paused);
+        }
+        window.speed = () => {
+            if (animationSpeed != speedNormal)
+                animationSpeed = speedNormal;
+            else
+                animationSpeed = speedSlow;
+            // animationSpeed = (animationSpeed % maxSpeed) + step;
+            setHtml("animationSpeed", animationSpeed);
+        }
+        window.toggleHiglightNodes = async () => {
+            highlightNodes = !highlightNodes;
+            setHtml("nodesMode", nodesMode);
+            await animationStepInnerAsync();
+        }
+        window.toggleNodes = async () => {
+            nodesMode += 1;
+            setHtml("nodesMode", nodesMode);
+            await animationStepInnerAsync();
+        }
+        window.onShowDense = async () => {
+            showDense = !showDense;
+            setCheckbox("showDenseCheckbox", showDense);
+            await animationStepInnerAsync();
+        }
+        window.onShowReduced = async () => {
+            showReduced = !showReduced;
+            setCheckbox("showReducedCheckbox", showReduced);
+            await animationStepInnerAsync();
+        }
+
+
+        setCheckbox("showDenseCheckbox", showDense);
+        setCheckbox("showReducedCheckbox", showReduced);
+        setRunButton(false);
+        setHtml("animationSpeed", animationSpeed);
+        setHtml("nodesMode", nodesMode);
+
+        var simulationSelector = document.getElementById('simulationSelector');
+        var listFile = await loadFileAsync(`${output_path}/list.json`);
+
+        simulationName = listFile.simulations[0];
+        animationCount = listFile.steps[0];
+
+        for (const simulationName of listFile.simulations) {
+            var opt = document.createElement('option');
+            opt.value = simulationName;
+            opt.innerHTML = simulationName;
+            simulationSelector.appendChild(opt);
+        }
+
+        function setHtml(label, value) {
+            document.getElementById(label).innerHTML = value;
+        }
+        function setCheckbox(label, value) {
+            document.getElementById(label).checked = value;
+        }
+
+        function setRunButton(new_paused) {
+            paused = new_paused;
+            var button = document.getElementById('buttonRun');
+            if (paused)
+                button.innerHTML = "Play";
+            else
+                button.innerHTML = "Pause";
+        }
+
+        function onWindowResize() {
+            gCamera.aspect = window.innerWidth / window.innerHeight;
+            gCamera.updateProjectionMatrix();
+            gRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        async function loadFileAsync(filePath, i = 0, animationCount = 1) {
+            var fileContent = await fileLoader.setResponseType('json').loadAsync(
+                filePath,
+                function (xhr) {
+                    loadedProgress = parseInt(((i + 1) / animationCount) * 100); // + xhr.loaded / xhr.total
+                    setHtml("loadedProgress", `${loadedProgress}% loaded`);
+                },
+                function (err) {
+                    document.getElementById("error").innerHTML = 'Error loading meshes';
+                }
+            );
+            return fileContent;
+        }
+
+        // ------------------------------------------------------------------
+        class Body {
+
+            getNodes(mesh) {
+                nodesMode = nodesMode % mesh.nodes_list.length;
+                setHtml("nodesMode", nodesMode);
+                var nodes = mesh.nodes_list[nodesMode];
+                return nodes;
+            }
+
+            getNodesReduced(mesh) {
+                return mesh.nodes_reduced_list[nodesMode];
+            }
+
+            getHighlightedNodes(mesh) {
+                return mesh.highlighted_nodes_list[nodesMode];
+            }
+
+            constructor(initialMesh) {
+                // physics
+                var nodes = this.getNodes(initialMesh);
+                var nodesReduced = this.getNodesReduced(initialMesh);
+                var boundary_surfaces = initialMesh.boundary_surfaces
+
+                this.denseNodesCount = nodes.length / 3;
+                this.surfacesCount = boundary_surfaces.length / 3;
+                this.denseNodes = new Float32Array(nodes);
+
+                // surface tri mesh
+                var geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(this.denseNodes, 3));
+                geometry.setIndex(boundary_surfaces);
+                var material = new THREE.MeshPhongMaterial({ color: 0xd9dbdc, side: THREE.DoubleSide });
+                material.flatShading = true;
+                this.denseMesh = new THREE.Mesh(geometry, material);
+                this.denseMesh.name = "surfaceMesh";
+                // this.surfaceMesh.castShadow = true;
+                this.denseMesh.userData = this;
+                this.denseMesh.layers.enable(1);
+                this.denseMesh.geometry.computeVertexNormals();
+                this.denseMesh.visible = showDense;
+
+                if (nodesReduced == undefined) {
+                    this.sparseNodes = null;
+                    this.sparseMesh = null;
+                }
+                else {
+                    this.sparseNodes = new Float32Array(nodesReduced);
+
+                    var geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(this.sparseNodes, 3));
+                    geometry.setIndex(initialMesh.boundary_edges_reduced);
+
+                    var material = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 2 });
+                    this.sparseMesh = new THREE.LineSegments(geometry, material);
+                    this.sparseMesh.name = "sparseMesh";
+
+                    // var material = new THREE.MeshPhongMaterial({ color: 0xff00ff, side: THREE.DoubleSide });
+                    // material.flatShading = true;
+                    // this.tetMesh = new THREE.Mesh(geometry, material);
+                    this.sparseMesh.visible = showReduced;
+                    // console.log(JSON.stringify(tetMesh.verts));
+                }
+            }
+
+            updateMesh(mesh) {
+                var nodes = this.getNodes(mesh);
+                var nodes_reduced = this.getNodesReduced(mesh);
+
+                for (var i = 0; i < this.denseNodes.length; i++)
+                    this.denseNodes[i] = nodes[i];
+                // this.surfaceMesh.geometry.computeVertexNormals();
+                this.denseMesh.geometry.attributes.position.needsUpdate = true;
+                // this.surfaceMesh.geometry.computeBoundingSphere();
+                this.denseMesh.visible = showDense;
+
+                if (this.sparseNodes) {
+                    for (var i = 0; i < this.sparseNodes.length; i++)
+                        this.sparseNodes[i] = nodes_reduced[i];
+                    this.sparseMesh.geometry.attributes.position.needsUpdate = true;
+
+                    this.sparseMesh.visible = showReduced;
+                }
+
+            }
+
+            addToScene(scene) {
+                scene.remove(scene.getObjectByName("surfaceMesh"));
+                scene.remove(scene.getObjectByName("sparseMesh"));
+
+                scene.add(this.denseMesh);
+                if (this.sparseMesh != null) {
+                    scene.add(this.sparseMesh);
+                }
+            }
+        }
+
+        function addObstacle(scene, mesh) {
+            var obs = mesh.linear_obstacles;
+            const dir = new THREE.Vector3(obs[0], obs[1], obs[2]);
+            dir.normalize();
+            const origin = new THREE.Vector3(obs[3], obs[4], obs[5]);
+
+            var length = 0.5
+            var arrowHelper = new THREE.ArrowHelper(dir, origin, length, 0xff0000);
+
+            scene.remove(scene.getObjectByName("arrowHelper"));
+            scene.remove(scene.getObjectByName("ground"));
+
+            arrowHelper.name = "arrowHelper";
+            // scene.add(arrowHelper);
+
+            var ground = new THREE.Mesh(
+                new THREE.PlaneBufferGeometry(2, 2, 1, 1),
+                new THREE.MeshPhongMaterial({ color: 0x414b54, shininess: 50, side: THREE.DoubleSide })
+            );
+            ground.lookAt(dir);
+            ground.position.set(obs[3], obs[4], obs[5]);
+            ground.receiveShadow = true;
+            ground.name = "ground";
+            scene.add(ground);
+
+            if (mesh.mesh_obstacles_nodes != undefined) {
+                for (var i = 0; i < mesh.mesh_obstacles_nodes.length; i += 1) {
+                    var obstacle_nodes = new Float32Array(mesh.mesh_obstacles_nodes[i]);
+                    var obstacle_boundary_surfaces = mesh.mesh_obstacles_boundary_surfaces[i];
+
+                    var geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(obstacle_nodes, 3));
+                    geometry.setIndex(obstacle_boundary_surfaces);
+                    var material = new THREE.MeshPhongMaterial({ color: 0xd9dbdc, side: THREE.DoubleSide });
+                    material.flatShading = true;
+                    var obstacleMesh = new THREE.Mesh(geometry, material);
+                    obstacleMesh.name = 'obstacleMesh${i}';
+                    // this.surfaceMesh.castShadow = true;
+                    obstacleMesh.userData = this;
+                    obstacleMesh.layers.enable(1);
+                    obstacleMesh.geometry.computeVertexNormals();
+                    obstacleMesh.visible = showDense;
+                    scene.add(obstacleMesh);
+                }
+            }
+        }
+
+
+        // ------------------------------------------
+
+        function initThreeScene() {
+            scene = new THREE.Scene();
+
+            scene.add(new THREE.AxesHelper(0.2));
+
+            // Lights
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            // scene.fog = new THREE.Fog(0x000000, 0, 15);
+
+            // var pos = (0.46668502, 0.66293614, 1.12681618);
+            var topLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            topLight.position.set(0, 0, 5);
+            topLight.target.position.set(0, 0, 0);
+            scene.add(topLight);
+            // scene.add(new THREE.DirectionalLightHelper(topLight, 0.1));
+
+            var bottomLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            bottomLight.position.set(0, 0, -5);
+            bottomLight.target.position.set(0, 0, 0);
+            scene.add(bottomLight);
+            // scene.add(new THREE.DirectionalLightHelper(bottomLight, 0.1));
+
+            // Geometry
+            var helper = new THREE.GridHelper(20, 20);
+            helper.material.opacity = 1.0;
+            helper.material.transparent = true;
+            helper.position.set(0, 0.002, 0);
+            // gThreeScene.add(helper);
+
+            // Renderer
+
+            gRenderer = new THREE.WebGLRenderer();
+            gRenderer.shadowMap.enabled = true;
+            gRenderer.setPixelRatio(window.devicePixelRatio);
+            gRenderer.setSize(0.8 * window.innerWidth, 0.8 * window.innerHeight);
+            window.addEventListener('resize', onWindowResize, false);
+            container.appendChild(gRenderer.domElement);
+
+            // Camera
+
+            gCamera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+            gCamera.position.set(0, 4, 4);
+            gCamera.updateMatrixWorld();
+            gCamera.up.set(0, 0, 1);
+
+            scene.add(gCamera);
+
+            gCameraControl = new THREE.OrbitControls(gCamera, gRenderer.domElement);
+            gCameraControl.zoomSpeed = 0.5;
+            gCameraControl.panSpeed = 0.4;
+
+        }
+
+
+        async function reloadMeshesAsync() {
+            meshes = [await loadFileAsync(`${simulationName}/0.json`)];
+
+            animationSkip = meshes[0].skip;
+            // animationCount = count * animationSkip;// meshes.count * meshes.skip;
+
+            for (var i = animationSkip; i < animationCount; i += animationSkip) {
+                meshes.push(await loadFileAsync(`${simulationName}/${i}.json`, i, animationCount))
+            }
+
+            document.getElementById("loadedProgress").innerHTML = '';
+            setHtml("count", `${animationCount} count`);
+            setHtml("skip", `${animationSkip} skip`);
+        }
+
+        async function initMeshAsync() {
+
+            var mesh = meshes[0]
+            body = new Body(mesh);
+            body.addToScene(scene);
+            addObstacle(scene, mesh);
+
+            setHtml("denseNodesCount", body.denseNodesCount);
+            setHtml("surfacesCount", body.surfacesCount);
+        }
+
+        async function runAnimationAsync() {
+            // if (stop)
+            //     return;
+            await animationStepAsync();
+            gRenderer.render(scene, gCamera);
+            requestAnimationFrame(runAnimationAsync);
+
+        }
+
+        async function animationStepAsync() {
+            if (paused)
+                return;
+
+            animationFrameFloat += animationSpeed;
+            if (animationFrame() > animationCount)
+                animationFrameFloat = 0;
+
+            if (animationFrame() % animationSkip != 0)
+                return;
+
+            loadedProgress = parseInt(animationFrame() / animationCount * 100);
+            // setHtml("animationProgress", `${loadedProgress}% frame`);
+            setHtml("animationProgress", `${animationFrame()} frame`);
+            await animationStepInnerAsync();
+        }
+
+
+        async function animationStepInnerAsync() {
+            var step = parseInt((animationFrame() % animationCount) / animationSkip);
+
+            var mesh = meshes[step];
+            body.updateMesh(mesh);
+            addObstacle(scene, mesh);
+
+            if (highlightNodes)
+                rehighlightNodes(body.getHighlightedNodes(mesh));
+            else
+                clearHighlightNodes();
+        }
+
+        function clearHighlightNodes() {
+            var oldBallMesh = scene.getObjectByName("ballMesh");
+            if (oldBallMesh !== undefined) {
+                for (var child in oldBallMesh.children) {
+                    scene.remove(child);
+                }
+                scene.remove(oldBallMesh);
+            }
+        }
+
+        function rehighlightNodes(nodes) {
+            var radius = 0.015;
+            var segments = 8;
+            var nodesCount = nodes.length / 3;
+
+            clearHighlightNodes();
+
+            if (nodes.length == 0)
+                return;
+
+            var ballMesh = new THREE.Object3D();
+            ballMesh.name = "ballMesh";
+            for (var i = 0; i < nodesCount; i++) {
+                var pos = new THREE.Vector3(nodes[3 * i], nodes[3 * i + 1], nodes[3 * i + 2]);
+
+                var geometry = new THREE.SphereGeometry(radius, segments, segments);
+                var material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                var ball = new THREE.Mesh(geometry, material); // THREE.InstancedMesh( geometry, material, this.numBalls )
+                ball.position.copy(pos);
+
+                ballMesh.add(ball);
+                // ball.geometry.attributes.position.needsUpdate = true;
+            }
+            scene.add(ballMesh);
+        }
+
+        async function loadDataAsync() {
+            await reloadMeshesAsync();
+            await initMeshAsync();
+        }
+
+        var body;
+        initThreeScene();
+        onWindowResize();
+        await loadDataAsync();
+        await runAnimationAsync();
+
+    </script>
+</body>
+
+</html>

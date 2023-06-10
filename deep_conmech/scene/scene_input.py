@@ -1,289 +1,236 @@
-from dataclasses import dataclass
+from typing import List
 
+import jax
+import jax.numpy as jnp
 import numba
 import numpy as np
 import torch
-from torch_geometric.data import Data
 
-from conmech.helpers import nph
+from conmech.helpers import jxh, nph
+from conmech.helpers.config import SimulationConfig
 from conmech.properties.body_properties import TimeDependentBodyProperties
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.obstacle_properties import ObstacleProperties
 from conmech.properties.schedule import Schedule
-from conmech.scene.body_forces import energy
-from conmech.scene.scene import EnergyObstacleArguments, get_boundary_integral
+from conmech.state.body_position import mesh_normalization_decorator
+from deep_conmech.data.data_classes import MeshLayerData, TargetData
 from deep_conmech.helpers import thh
-from deep_conmech.scene.scene_layers import MeshLayerLinkData, SceneLayers
-
-
-def clean_acceleration(cleaned_a, a_correction):
-    return cleaned_a if (a_correction is None) else (cleaned_a - a_correction)
-
-
-def get_mean_loss(acceleration, forces):
-    return 1000.0 * torch.norm(torch.mean(forces, axis=0) - torch.mean(acceleration, axis=0)) ** 2
-
-
-def loss_normalized_obstacle_correction(
-    cleaned_a: torch.Tensor,
-    a_correction: torch.Tensor,
-    forces: torch.Tensor,
-    args: EnergyObstacleArguments,
-):
-    acceleration = clean_acceleration(cleaned_a=cleaned_a, a_correction=a_correction)
-    main_loss = energy(acceleration, args.lhs, args.rhs)
-    boundary_integral = get_boundary_integral(acceleration=acceleration, args=args)
-
-    # check if is colliding, include mass_density
-    mean_loss = get_mean_loss(forces, acceleration)
-    # + mean_loss * (boundary_integral == 0)
-    return main_loss + boundary_integral, mean_loss
+from deep_conmech.scene.scene_layers import MeshLayerLinkData
+from deep_conmech.scene.scene_randomized import SceneRandomized
 
 
 @numba.njit
-def set_diff_numba(data_from, data_to, position, row, i, j):
-    dimension = data_to.shape[1]
-    vector = data_from[j] - data_to[i]
-    row[position : position + dimension] = vector
-    row[position + dimension] = nph.euclidean_norm_numba(vector)
+def get_indices_from_graph_sizes_numba(graph_sizes: List[int]):
+    index = np.zeros(sum(graph_sizes), dtype=np.int64)
+    last = 0
+    for size in graph_sizes:
+        last += size
+        index[last:] += 1
+    index = index.reshape(-1, 1)
+    return index
 
 
-@numba.njit  # (parallel=True)
-def get_edges_data_numba(
-    edges,
-    initial_nodes_from,
-    initial_nodes_to,
-    displacement_old_from,
-    displacement_old_to,
-    velocity_old_from,
-    velocity_old_to,
-    # forces_from,
-    # forces_to,
-    edges_data_dim,
-):
-    dimension = initial_nodes_to.shape[1]
-    edges_number = edges.shape[0]
-    edges_data = np.zeros((edges_number, edges_data_dim))  # 2 * (dimension + 1))) # 4
-    for edge_index in range(edges_number):
-        j, i = edges[edge_index]
-
-        set_diff_numba(initial_nodes_from, initial_nodes_to, 0, edges_data[edge_index], i, j)
-        set_diff_numba(
-            displacement_old_from, displacement_old_to, dimension + 1, edges_data[edge_index], i, j
-        )
-        set_diff_numba(
-            velocity_old_from, velocity_old_to, 2 * (dimension + 1), edges_data[edge_index], i, j
-        )
-        # set_diff_numba(forces_from, forces_to, 3 * (dimension + 1), edges_data[edge_index], i, j)
-    return edges_data
+def prepare_node_data(data: np.ndarray, nodes_count, add_norm=False):
+    approximated_data = jnp.array(data)
+    result = jxh.complete_data_with_zeros(data=approximated_data, nodes_count=nodes_count)
+    if add_norm:
+        result = jxh.append_euclidean_norm(result)
+    return result
 
 
-@numba.njit
-def get_multilayer_edges_numba(closest_nodes):
-    edges_count = closest_nodes.shape[0] * closest_nodes.shape[1]
-    edges = np.zeros((edges_count, 2), dtype=np.int64)
-    index = 0
-    for i, neighbours in enumerate(closest_nodes):
-        for j in neighbours:
-            edges[index] = [j, i]
-            index += 1
-    return edges
+def get_edges_column(data_from, data_to, directional_edges):
+    # print("get_edges_column")
+    column = data_to[directional_edges[:, 1]] - data_from[directional_edges[:, 0]]
+
+    return jnp.hstack((column, nph.euclidean_norm(column, keepdims=True)))
 
 
-@dataclass
-class EnergyObstacleArgumentsTorch:
-    lhs: torch.Tensor
-    rhs: torch.Tensor
-    boundary_velocity_old: torch.Tensor
-    boundary_normals: torch.Tensor
-    penetration: torch.Tensor
-    surface_per_boundary_node: torch.Tensor
-    obstacle_prop: ObstacleProperties
-    time_step: float
-
-
-class MeshLayerData(Data):
-    # def __init__(self):
-    #    super().__init__()
-
-    def __inc__(self, key, value, *args, **kwargs):
-        if key == "closest_nodes_to_down":
-            return torch.tensor([self.layer_nodes_count])
-        if key == "closest_nodes_from_down":
-            return torch.tensor([self.down_layer_nodes_count])
-        if key == "edge_index_to_down":
-            return torch.tensor([[self.layer_nodes_count], [self.down_layer_nodes_count]])
-        if key == "edge_index_from_down":
-            return torch.tensor([[self.down_layer_nodes_count], [self.layer_nodes_count]])
-        else:
-            return super().__inc__(key, value, *args, **kwargs)
-
-
-class SceneInput(SceneLayers):
+class SceneInput(SceneRandomized):
     def __init__(
         self,
         mesh_prop: MeshProperties,
         body_prop: TimeDependentBodyProperties,
         obstacle_prop: ObstacleProperties,
         schedule: Schedule,
-        normalize_by_rotation: bool,
+        simulation_config: SimulationConfig,
         create_in_subprocess: bool,
-        layers_count: int,
-        with_schur: bool = True,
     ):
         super().__init__(
             mesh_prop=mesh_prop,
             body_prop=body_prop,
             obstacle_prop=obstacle_prop,
             schedule=schedule,
-            normalize_by_rotation=normalize_by_rotation,
+            simulation_config=simulation_config,
             create_in_subprocess=create_in_subprocess,
-            layers_count=layers_count,
-            with_schur=with_schur,
         )
 
-    def prepare_node_data(self, data: np.ndarray, layer_number: int, add_norm=False):
-        approximated_data = self.approximate_boundary_or_all_from_base(
-            layer_number=layer_number, base_values=data
-        )
-        mesh = self.all_layers[layer_number].mesh
-        result = self.complete_mesh_boundary_data_with_zeros(mesh=mesh, data=approximated_data)
-        if add_norm:
-            result = nph.append_euclidean_norm(result)
-        return result
+    @mesh_normalization_decorator
+    def get_edges_data(self, directional_edges, reduced=False):
+        scene = self.reduced if reduced else self
 
-    def get_edges_data(self, directional_edges, layer_number_from: int, layer_number_to: int):
-        edges_data = get_edges_data_numba(
-            edges=directional_edges,
-            initial_nodes_from=self.all_layers[layer_number_from].mesh.input_initial_nodes,
-            initial_nodes_to=self.all_layers[layer_number_to].mesh.input_initial_nodes,
-            displacement_old_from=self.prepare_node_data(
-                data=self.input_displacement_old, layer_number=layer_number_from
-            ),
-            displacement_old_to=self.prepare_node_data(
-                data=self.input_displacement_old, layer_number=layer_number_to
-            ),
-            velocity_old_from=self.prepare_node_data(
-                data=self.input_velocity_old, layer_number=layer_number_from
-            ),
-            velocity_old_to=self.prepare_node_data(
-                data=self.input_velocity_old, layer_number=layer_number_to
-            ),
-            # forces_from=self.prepare_node_data(
-            #     data=self.input_forces, layer_number=layer_number_from
-            # ),
-            # forces_to=self.prepare_node_data(data=self.input_forces, layer_number=layer_number_to),
-            edges_data_dim=self.get_edges_data_dim(self.mesh.dimension),
-        )
-        return edges_data
+        def get_column(data):
+            data_jax = jnp.array(data)
+            return jax.jit(get_edges_column)(
+                data_from=data_jax,
+                data_to=data_jax,
+                directional_edges=directional_edges,
+            )
 
-    def get_nodes_data(self, layer_number):
-        input_forces = self.prepare_node_data(
-            layer_number=layer_number, data=self.input_forces, add_norm=True
-        )
-        # boundary_normals = self.prepare_node_data(
-        #     data=self.get_normalized_boundary_normals(), layer_number=layer_number, add_norm=True
-        # )
-        # friction_vector = self.prepare_node_data(
-        #     data=self.get_friction_vector(),
-        #     layer_number=layer_number,
-        # )
-        # # boundary_penetration = self.prepare_node_data(
-        # #     data=self.get_normalized_boundary_penetration(),
-        # #     layer_number=layer_number,
-        # #     add_norm=True,
-        # # )
-        # boundary_penetration_norm = self.prepare_node_data(
-        #     data=self.get_penetration_norm(),
-        #     layer_number=layer_number,
-        # )
-
-        boundary_damping = self.prepare_node_data(
-            data=self.get_damping_input(),
-            layer_number=layer_number,
-            add_norm=True,
-        )
-        boundary_friction = self.prepare_node_data(
-            data=self.get_friction_input(),
-            layer_number=layer_number,
-            add_norm=True,
-        )
-
-        boundary_volume = self.prepare_node_data(
-            data=self.get_surface_per_boundary_node(), layer_number=layer_number
-        )
-        nodes_data = np.hstack(
+        # TODO: Add historical data
+        if reduced:
+            return jnp.hstack(
+                (
+                    get_column(scene.input_initial_nodes),  # cached
+                    get_column(scene.input_displacement_old),
+                    get_column(scene.input_velocity_old),
+                    # get_column(scene.input_forces),
+                )
+            )
+        return jnp.hstack(
             (
-                input_forces,
-                boundary_damping,
-                boundary_friction,
-                boundary_volume,
+                get_column(scene.input_initial_nodes),
+                # get_column(scene.input_forces),
             )
         )
-        return nodes_data
 
-    def get_multilayer_edges_with_data(
-        self, link: MeshLayerLinkData, layer_number_from: int, layer_number_to: int
-    ):
+    @mesh_normalization_decorator
+    def get_multilayer_edges_data(self, directional_edges):
+        # displacement_old_sparse = self.reduced.input_displacement_old
+        # displacement_old_dense = self.input_displacement_old
+        # velocity_old_sparse = self.reduced.input_velocity_old
+        # velocity_old_dense = self.input_velocity_old
+
+        def get_column(data_sparse, data_dense):
+            return jax.jit(get_edges_column)(
+                data_from=jnp.array(data_sparse),
+                data_to=jnp.array(data_dense),
+                directional_edges=directional_edges,
+            )
+
+        return np.hstack(
+            (
+                get_column(self.reduced.input_initial_nodes, self.input_initial_nodes),  # cached
+                # get_column(
+                #     displacement_old_sparse,
+                #     displacement_old_dense,
+                # ),
+                # get_column(velocity_old_sparse, velocity_old_dense),
+                # get_column(self.reduced.input_forces, self.input_forces),
+            )
+        )
+
+    @mesh_normalization_decorator
+    def get_nodes_data(self, reduced):
+        scene = self.reduced if reduced else self
+
+        def prepare_nodes(data):
+            return jax.jit(prepare_node_data, static_argnames=["add_norm", "nodes_count"])(
+                data=data,
+                add_norm=True,
+                nodes_count=scene.nodes_count,
+            )
+
+        boundary_normals = prepare_nodes(scene.get_normalized_boundary_normals_jax())
+
+        # boundary_friction = self.prepare_node_data(
+        #     data=self.get_friction_input(),
+        #     layer_number=layer_number,
+        #     add_norm=True,
+        # )
+        # boundary_normal_response = self.prepare_node_data(
+        #     data=self.get_normal_response_input(),
+        #     layer_number=layer_number,
+        # )
+        # boundary_volume = self.prepare_node_data(
+        #     data=self.get_surface_per_boundary_node(), layer_number=layer_number
+        # )
+        # input_forces = prepare_nodes(scene.input_forces)
+        if reduced:
+            new_displacement = prepare_nodes(self.reduced.norm_by_reduced_lifted_new_displacement)
+            # new_displacement = prepare_nodes(
+            #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
+            # )
+            return jnp.hstack(
+                (
+                    new_displacement,
+                    # linear_acceleration,
+                    # boundary_normals,
+                    # boundary_friction,
+                    # boundary_normal_response,
+                    # boundary_volume,
+                    # input_forces,
+                )
+            )
+        else:
+            # new_randomized_displacement = self.to_normalized_displacement(0 * self.exact_acceleration) #use old acceleration
+
+            # if self.simulation_config.mode != "net": # TODO: Clean
+            #     def get_random(scale):
+            #         return nph.generate_normal(
+            #             rows=self.nodes_count,
+            #             columns=self.dimension,
+            #             sigma=scale,
+            #         )
+
+            #     randomization = get_random(scale= (scene.time_step**2))
+            #     new_randomized_displacement += randomization
+
+            return jnp.hstack(
+                # TODO: Add previous accelerations
+                (
+                    # prepare_nodes(new_randomized_displacement),
+                    # new_lowered_displacement,
+                    # linear_acceleration,
+                    0 * boundary_normals,
+                    # boundary_friction,
+                    # boundary_normal_response,
+                    # boundary_volume,
+                    # input_forces,
+                )
+            )
+
+    @mesh_normalization_decorator
+    def get_multilayer_edges_with_data(self, link: MeshLayerLinkData):
         closest_nodes = torch.tensor(link.closest_nodes)
-        closest_weights = thh.to_torch_set_precision(link.closest_weights)
-        edges_index_np = get_multilayer_edges_numba(link.closest_nodes)
         edges_data = thh.to_torch_set_precision(
-            self.get_edges_data(
-                directional_edges=edges_index_np,
-                layer_number_from=layer_number_from,
-                layer_number_to=layer_number_to,
-            )
+            self.get_multilayer_edges_data(directional_edges=link.edges_index)
         )
-        edges_index = thh.get_contiguous_torch(edges_index_np)
-        distances_link = link.closest_distances
-        closest_nodes_count = link.closest_distances.shape[1]
-        distance_norm_index = 2
-        distances_edges = (
-            edges_data[:, distance_norm_index].numpy().reshape(-1, closest_nodes_count)
-        )
-        assert np.allclose(distances_link, distances_edges)
-        assert np.allclose(
-            edges_index_np,
-            edges_index.T.numpy(),
-        )
-        return edges_index, edges_data, closest_nodes, closest_weights
+        edges_index = thh.get_contiguous_torch(link.edges_index)
+        # distances_link = link.closest_distances
+        # closest_nodes_count = link.closest_distances.shape[1]
+        # distance_norm_index = self.dimension
+        # distances_edges = (
+        #     edges_data[:, distance_norm_index].numpy().reshape(-1, closest_nodes_count)
+        # )
+        # assert np.allclose(distances_link, distances_edges)
+        # assert np.allclose(
+        #     edges_index_np,
+        #     edges_index.T.numpy(),
+        # )
+        return edges_index, edges_data, closest_nodes
 
-    def get_features_data(self, layer_number: int, scene_index: int):
-        # exact_normalized_a_torch=None
+    @mesh_normalization_decorator
+    def get_features_data(self, layer_number: int = 0, to_cpu=False):
         # edge_index_torch, edge_attr = remove_self_loops(
         #    self.contiguous_edges_torch, self.edges_data_torch
         # )
         # Do not use "face" in any name (reserved in PyG)
         # Do not use "index", "batch" in any name (PyG stacks values to create single graph; batch - adds one, index adds nodes count (?))
-
+        reduced = layer_number > 0
         layer_data = self.all_layers[layer_number]
-        mesh = layer_data.mesh
-        layer_directional_edges = np.vstack((mesh.edges, np.flip(mesh.edges, axis=1)))
+        scene = layer_data.mesh
 
         data = MeshLayerData(
-            scene_id=torch.tensor([scene_index]),
-            edge_number=torch.tensor([mesh.edges_number]),
+            edge_number=torch.tensor([scene.edges_number]),
             layer_number=torch.tensor([layer_number]),
-            forces=thh.to_torch_set_precision(
-                self.prepare_node_data(layer_number=0, data=self.input_forces)
-            ),
-            pos=thh.to_torch_set_precision(mesh.normalized_initial_nodes),
-            x=thh.to_torch_set_precision(self.get_nodes_data(layer_number)),
-            edge_index=thh.get_contiguous_torch(layer_directional_edges),
-            edge_attr=thh.to_torch_set_precision(
-                self.get_edges_data(
-                    layer_directional_edges,
-                    layer_number_from=layer_number,
-                    layer_number_to=layer_number,
-                )
-            ),
+            pos=thh.to_torch_set_precision(scene.normalized_initial_nodes),
+            x=thh.convert_jax_to_tensor_set_precision(self.get_nodes_data(reduced=reduced)),
             # pin_memory=True,
             # num_workers=1
         )
 
-        if layer_number > 0:
-            data.layer_nodes_count = torch.tensor([mesh.nodes_count])
+        if reduced:
+            data.layer_nodes_count = torch.tensor([scene.nodes_count])
             data.down_layer_nodes_count = torch.tensor(
                 [self.all_layers[layer_number - 1].mesh.nodes_count]
             )
@@ -292,38 +239,11 @@ class SceneInput(SceneLayers):
                 data.edge_index_to_down,
                 data.edge_attr_to_down,
                 data.closest_nodes_to_down,
-                data.closest_weights_to_down,
-            ) = self.get_multilayer_edges_with_data(
-                link=layer_data.to_down,
-                layer_number_from=layer_number,
-                layer_number_to=layer_number - 1,
-            )
-            (
-                data.edge_index_from_down,
-                data.edge_attr_from_down,
-                data.closest_nodes_from_down,
-                data.closest_weights_from_down,
-            ) = self.get_multilayer_edges_with_data(
-                link=layer_data.from_down,
-                layer_number_from=layer_number - 1,
-                layer_number_to=layer_number,
-            )
+            ) = self.get_multilayer_edges_with_data(link=layer_data.to_base)
 
-        return data
-
-    def get_target_data(self):
-        target_data = dict(
-            a_correction=thh.to_double(self.normalized_a_correction),
-            args=EnergyObstacleArgumentsTorch(
-                lhs=thh.to_double(self.solver_cache.lhs),
-                rhs=thh.to_double(self.get_normalized_rhs_np()),
-                boundary_velocity_old=thh.to_double(self.norm_boundary_velocity_old),
-                boundary_normals=thh.to_double(self.get_normalized_boundary_normals()),
-                penetration=thh.to_double(self.get_penetration()),
-                surface_per_boundary_node=thh.to_double(self.get_surface_per_boundary_node()),
-                obstacle_prop=self.obstacle_prop,
-                time_step=self.schedule.time_step,
-            ),
+        data.edge_index = thh.get_contiguous_torch(scene.mesh.directional_edges)
+        data.edge_attr = thh.convert_jax_to_tensor_set_precision(
+            self.get_edges_data(scene.mesh.directional_edges, reduced=reduced)
         )
         _ = """
         transform = T.Compose(
@@ -335,36 +255,92 @@ class SceneInput(SceneLayers):
         )  # T.OneHotDegree(),
         transform(data)
         """
+        if to_cpu:
+            data.x = data.x.cpu()
+            data.edge_attr = data.edge_attr.cpu()
+
+        return data
+
+    @mesh_normalization_decorator
+    def get_target_data(self, to_cpu=False):
+        _ = to_cpu
+        target_data = TargetData()
+        # new_norm_lowered_displacement = self.lower_displacement_from_position(
+        #     self.reduced.norm_by_reduced_lifted_new_displacement
+        # ) # rotate and lower
+
+        target_data.normalized_new_displacement = thh.to_double(
+            self.norm_by_reduced_lifted_new_displacement
+        )  # lower and rotate
+
+        target_data.last_displacement_step = thh.to_double(self.get_last_displacement_step())
+        ###
+
+        skinning_acceleration = np.array(
+                self.lower_acceleration_from_position(self.reduced.lifted_acceleration)
+            )
+        target_data.normalized_new_displacement_skinning = thh.to_double(self.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration))
+
         return target_data
 
     @staticmethod
-    def get_nodes_data_description(dimension: int):
+    def get_nodes_data_description_sparse(dimension: int):
         desc = []
         for attr in [
-            "forces",
-            "boundary_damping",
-            "boundary_friction",
+            "exact_acceleration",
+            "scaled_new_displacement",
+            # "input_forces",
+            "boundary_normals",
+            # "boundary_friction",
         ]:
             for i in range(dimension):
                 desc.append(f"{attr}_{i}")
             desc.append(f"{attr}_norm")
 
-        for attr in ["boundary_volume"]:
-            desc.append(attr)
+        # for attr in ["boundary_volume"]:  # "boundary_normal_response", "boundary_volume"]:
+        #     desc.append(attr)
         return desc
 
     @staticmethod
-    def get_nodes_data_dim(dimension: int):
-        return len(SceneInput.get_nodes_data_description(dimension))
+    def get_nodes_data_description_dense(dimension: int):
+        desc = []
+        for attr in [
+            # "input_forces",
+            "boundary_normals",
+        ]:
+            for i in range(dimension):
+                desc.append(f"{attr}_{i}")
+            desc.append(f"{attr}_norm")
+
+        # for attr in ["boundary_volume"]:
+        #     desc.append(attr)
+        return desc
 
     @staticmethod
-    def get_edges_data_dim(dimension):
-        return len(SceneInput.get_edges_data_description(dimension))
+    def get_nodes_data_down_dim(dimension: int):
+        return len(SceneInput.get_nodes_data_description_dense(dimension))
+
+    @staticmethod
+    def get_nodes_data_up_dim(dimension: int):
+        return len(SceneInput.get_nodes_data_description_sparse(dimension))
+
+    @staticmethod
+    def get_sparse_edges_data_dim(dimension):
+        return (dimension + 1) * 4
+
+    @staticmethod
+    def get_dense_edges_data_dim(dimension):
+        return (dimension + 1) * 2
+        # return len(SceneInput.get_edges_data_description(dimension))
+
+    @staticmethod
+    def get_multilayer_edges_data_dim(dimension):
+        return (dimension + 1) * 2
 
     @staticmethod
     def get_edges_data_description(dim):
         desc = []
-        for attr in ["initial_nodes", "displacement_old", "velocity_old"]:  # , "forces"]:
+        for attr in ["initial_nodes", "displacement_old"]:  # , "velocity_old", "forces"]:
             for i in range(dim):
                 desc.append(f"{attr}_{i}")
             desc.append(f"{attr}_norm")

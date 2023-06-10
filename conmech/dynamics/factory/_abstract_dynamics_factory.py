@@ -1,4 +1,24 @@
+from ctypes import ArgumentError
 from typing import Tuple
+
+import numba
+import numpy as np
+
+
+@numba.njit
+def get_coo_sparse_data_numba(keys, values):
+    size = len(values)
+    if size < 0:
+        raise ArgumentError
+    feature_matrix_count = len(values[0])
+    row = np.zeros(size, dtype=np.int64)
+    col = np.zeros(size, dtype=np.int64)
+    data = np.zeros((feature_matrix_count, size), dtype=np.float64)
+    for index in range(size):
+        row[index], col[index] = keys[index]
+        data[:, index] = values[index]
+        index += 1
+    return row, col, data
 
 
 class AbstractDynamicsFactory:
@@ -6,7 +26,7 @@ class AbstractDynamicsFactory:
     def dimension(self) -> int:
         raise NotImplementedError()
 
-    def get_edges_features_matrix(self, elements, nodes) -> Tuple:
+    def get_edges_features_dictionary(self, elements, nodes) -> Tuple:
         raise NotImplementedError()
 
     def calculate_constitutive_matrices(self, W, mu, lambda_):

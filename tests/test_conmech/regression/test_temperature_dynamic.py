@@ -301,9 +301,9 @@ def test_global_optimization_solver(
     # replace generator with collection
     results = tuple(result_generator)
 
-    std_ids = standard_boundary_nodes(runner.body.mesh.initial_nodes, runner.body.mesh.elements)
-    displacement = results[-1].body.mesh.initial_nodes[:] - results[-1].displaced_nodes[:]
-    temperature = np.zeros(len(results[-1].body.mesh.initial_nodes))
+    std_ids = standard_boundary_nodes(runner.body.initial_nodes, runner.body.elements)
+    displacement = results[-1].body.initial_nodes[:] - results[-1].displaced_nodes[:]
+    temperature = np.zeros(len(results[-1].body.initial_nodes))
     temperature[: len(results[-1].temperature)] = results[-1].temperature
 
     # print result

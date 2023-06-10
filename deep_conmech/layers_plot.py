@@ -6,7 +6,6 @@ from conmech.helpers import cmh
 from conmech.plotting import plotter_2d, plotter_common
 from deep_conmech.data import base_dataset
 from deep_conmech.data.synthetic_dataset import SyntheticDataset
-from deep_conmech.scene.scene_layers import SceneLayers
 from deep_conmech.training_config import TrainingConfig, TrainingData
 
 
@@ -58,15 +57,15 @@ def plot_graph_layers():
     cmh.clear_folder(output_catalog)
     dataset = get_dataset(output_catalog)
 
-    dataloader = base_dataset.get_train_dataloader(dataset)
+    dataloader = base_dataset.get_train_dataloader(dataset, rank=0, world_size=1)
     for batch_number, layer_list in enumerate(dataloader):
         for layer_number in range(1, len(layer_list)):
             up_layer = layer_list[layer_number]
             down_layer = layer_list[layer_number - 1]
             desc = f"batch_number={batch_number} layer_number={layer_number}"
 
-            approximated_nodes = SceneLayers.approximate_internal(
-                from_values=up_layer.pos,
+            approximated_nodes = approximate_internal(
+                base_values=up_layer.pos,
                 closest_nodes=up_layer.closest_nodes_to_down,
                 closest_weights=up_layer.closest_weights_to_down,
             )
@@ -77,8 +76,8 @@ def plot_graph_layers():
                 description=f"{desc} to_down",
             )
 
-            approximated_nodes = SceneLayers.approximate_internal(
-                from_values=down_layer.pos,
+            approximated_nodes = approximate_internal(
+                base_values=down_layer.pos,
                 closest_nodes=up_layer.closest_nodes_from_down,
                 closest_weights=up_layer.closest_weights_from_down,
             )
@@ -99,12 +98,11 @@ def get_dataset(output_catalog):
     td = TrainingData(
         dataset="synthetic",
         mesh_density=8,
-        adaptive_training_mesh=False,
+        adaptive_training_mesh_scale=0,
         batch_size=3,
-        synthetic_batches_in_epoch=2,
-        mesh_layers_count=3,
+        dataset_size=2,
         final_time=0.1,
-        save_at_minutes=0,
+        save_at_epochs=1,
         validate_at_epochs=1,
     )
     config = TrainingConfig(
@@ -119,11 +117,8 @@ def get_dataset(output_catalog):
     )
     dataset = SyntheticDataset(
         description="train",
-        layers_count=config.td.mesh_layers_count,
-        load_features_to_ram=config.load_train_features_to_ram,
-        load_targets_to_ram=config.load_train_targets_to_ram,
         with_scenes_file=config.with_train_scenes_file,
-        randomize_at_load=True,
+        randomize=True,
         config=config,
     )
 
