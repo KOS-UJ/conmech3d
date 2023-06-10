@@ -24,7 +24,7 @@ import numpy as np
 from tqdm import tqdm
 
 args = sys.argv[1:]
-input_path = "/home/michal/Desktop/conmech/output"
+input_path = "/home/michal/Desktop/conmech3d/output"
 dense = True
 
 load_mesh = True

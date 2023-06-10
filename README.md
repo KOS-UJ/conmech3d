@@ -1,6 +1,6 @@
-# conmech
+# conmech3d
 
-conmech is a simulating package written in Python that allows to numerically solve contact mechanics problems. 
+conmech3d is a simulating package written in Python that allows to numerically solve contact mechanics problems. 
 
 ### Description
 
@@ -47,10 +47,10 @@ Follow the instructions to install conmech, and then install additional dependen
 To generate training and validation sets, start the training process and periodically save learned model parameters, run
 
     PYTHONPATH=. python deep_conmech/run_model.py --mode=train
-
+<!-- 
 To generate sample trajectories using the most current saved model parameters, run
 
     PYTHONPATH=. python deep_conmech/run_model.py --mode=plot
- 
+  -->
 
 
