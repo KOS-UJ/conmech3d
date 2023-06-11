@@ -208,7 +208,7 @@ class Scene(BodyForces):
         self.boundary_obstacle_normals_self = np.zeros_like(self.boundary_nodes)
         self.penetration_scalars_self = np.zeros((self.boundary_nodes_count, 1))
 
-        scalar = 1.
+        scalar = 1.0
 
         closest_indices, _, closest_weights = interpolate_nodes(
             base_nodes=self.moved_nodes,
@@ -356,7 +356,7 @@ class Scene(BodyForces):
             if hasattr(self, "reduced"):
                 base_scene = self.reduced
             else:
-                base_scene = self # TODO: Add warning
+                base_scene = self  # TODO: Add warning
             return get_in_base(
                 (moved_nodes - np.mean(base_scene.moved_nodes, axis=0)),
                 base_scene.get_rotation(base_scene.displacement_old),

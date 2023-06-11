@@ -118,6 +118,7 @@ def get_all_indices(data_path):
         pass
     return all_indices
 
+
 def load_simulation(simulation_path):
     all_indices = get_all_indices(simulation_path)
     simulation = []
@@ -133,22 +134,22 @@ def get_simulation(scene_files, label):
     labels = [s for s in scene_files if label in s]
     # assert len(labels) == 1
     labels.sort()
-    label=labels[-1]
+    label = labels[-1]
     print(label)
     return load_simulation(label)
 
+
 def get_exact_acceleration(scene, path):
     normal = load_simulation(path)
-    exact_acceleration = normal[scene.step]['exact_acceleration']
-    scene.step+=1 # TODO: Move to iterate self
+    exact_acceleration = normal[scene.step]["exact_acceleration"]
+    scene.step += 1  # TODO: Move to iterate self
 
-    reduced_exact_acceleration = scene.lift_acceleration_from_position(
-        exact_acceleration
-    )
+    reduced_exact_acceleration = scene.lift_acceleration_from_position(exact_acceleration)
     return exact_acceleration, reduced_exact_acceleration
 
 
 ####
+
 
 def profile(function: Callable, baypass: bool = False):
     if baypass:

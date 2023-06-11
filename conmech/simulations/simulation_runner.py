@@ -66,6 +66,7 @@ def create_scene(scenario):
             )
         elif scenario.simulation_config.mode in ["skinning", "skinning_backwards"]:
             from deep_conmech.scene.scene_layers import SceneLayers
+
             scene = SceneLayers(
                 mesh_prop=scenario.mesh_prop,
                 body_prop=scenario.body_prop,
@@ -76,6 +77,7 @@ def create_scene(scenario):
             )
         elif scenario.simulation_config.mode in ["net", "compare_net", "compare_reduced"]:
             from deep_conmech.scene.scene_input import SceneInput
+
             randomize = False
             scene = SceneInput(
                 mesh_prop=scenario.mesh_prop,
@@ -112,13 +114,9 @@ def create_scene(scenario):
     # np.save("./pt-jax/contact_boundary2.npy", scene.boundaries.contact_boundary)
     return scene
 
+
 def run_examples(
-    all_scenarios,
-    file,
-    plot_animation,
-    config: Config,
-    simulate_dirty_data=False,
-    save_all=False
+    all_scenarios, file, plot_animation, config: Config, simulate_dirty_data=False, save_all=False
 ):
 
     scenes = []
@@ -169,13 +167,17 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     # Comparer
     comparer_data_path = scenes_path + "_comparer"
 
-    normalized_nodes = (scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement)
-    comparer_data = {'displacement_old': scene.displacement_old, 'exact_acceleration': scene.exact_acceleration,
-             'normalized_nodes': normalized_nodes, 'lifted_acceleration': scene.lifted_acceleration,
-             "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
-             "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
-             "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)}
-    
+    normalized_nodes = scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
+    comparer_data = {
+        "displacement_old": scene.displacement_old,
+        "exact_acceleration": scene.exact_acceleration,
+        "normalized_nodes": normalized_nodes,
+        "lifted_acceleration": scene.lifted_acceleration,
+        "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
+        "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
+        "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration),
+    }
+
     pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
 
     # Matplotlib
@@ -214,7 +216,7 @@ def run_scenario(
     #     final_catalog = ""
     #     scenes_path = ""
     #     scenes_path_reduced = ""
-    label=f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}" # {start_time}_
+    label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"  # {start_time}_
     scenes_path = f"{final_catalog}/scenarios/{label}_DATA.scenes"
     scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}_DATA.scenes"
 
@@ -226,9 +228,7 @@ def run_scenario(
         plot_index = step[0] % ts == 0
         if "three" in config.animation_backend:
             plotter_functions.save_three(
-                scene=scene,
-                step=step[0],
-                folder=f"{final_catalog}/three/{label}"
+                scene=scene, step=step[0], folder=f"{final_catalog}/three/{label}"
             )
         if run_config.save_all or plot_index:
             save_scene(scene=scene, scenes_path=scenes_path, save_animation=save_animation)

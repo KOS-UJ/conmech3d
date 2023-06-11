@@ -53,7 +53,7 @@ class TrainingData:
     use_dataset_statistics: bool = True
     input_batch_norm: bool = False
     internal_batch_norm: bool = False
-    layer_norm: bool = False # TODO: Test
+    layer_norm: bool = False  # TODO: Test
 
     dropout_rate: Optional[float] = 0.5  # None  # 0.0  # 0.1 # 0.2  0.05
     skip_connections: bool = True

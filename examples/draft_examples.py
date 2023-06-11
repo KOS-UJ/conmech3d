@@ -28,28 +28,14 @@ from conmech.simulations import simulation_runner
 from conmech.state.obstacle import Obstacle
 from deep_conmech.run_model import get_newest_checkpoint_path
 from deep_conmech.training_config import TrainingConfig
-from examples.compare_examples import compare_latest
+from examples.draft_compare import compare_latest
 
 
 def main():
     load_dotenv()
     cmh.print_jax_configuration()
-    
-    # mode = "normal"
-    # mode = "compare_net"
-    # mode = "skinning"
-    # mode = "skinning_backwards"
 
-    for mode in ["skinning_backwards", "skinning", "net"]:  # Do not use normal
-        run_simulation(mode)
-
-    training_config = TrainingConfig(shell=False)
-    checkpoint_path = get_newest_checkpoint_path(training_config)
-    compare_latest(checkpoint_path.split('/')[-1])
-    input("Press Enter to continue...")
-
-def run_simulation(mode):
-    def get_simulation_config(mode, use_pca=False):
+    def get_simulation_config(mode='normal', use_pca=False):
         return SimulationConfig(
             use_normalization=False,
             use_linear_solver=False,
@@ -63,7 +49,7 @@ def run_simulation(mode):
             mode=mode,
         )
 
-    final_time = 0.3 #1.2 8
+    final_time = 10
     scale_forces = 5.0
 
     # all_print_scenaros = scenarios.all_print(config.td, config.sc)
@@ -77,13 +63,13 @@ def run_simulation(mode):
         #     simulation_config=get_simulation_config(mode),
         #     scale_forces=scale_forces,
         # ),
-        bunny_obstacles(
-            mesh_density=32,
-            scale=1,
-            final_time=final_time,
-            simulation_config=get_simulation_config(mode),
-            scale_forces=scale_forces,
-        ),
+        # bunny_obstacles(
+        #     mesh_density=32,
+        #     scale=1,
+        #     final_time=final_time,
+        #     simulation_config=get_simulation_config(mode),
+        #     scale_forces=scale_forces,
+        # ),
         # bunny_rotate_3d(
         #     mesh_density=32,
         #     scale=1,
@@ -167,29 +153,29 @@ def run_simulation(mode):
         #         np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, 0.3]]]), default_obstacle_prop
         #     ),
         # )
-        # Scenario(
-        #     name="armadillo_fall",
-        #     mesh_prop=MeshProperties(
-        #         dimension=3,
-        #         mesh_type=M_ARMADILLO_3D,
-        #         scale=[1],
-        #         mesh_density=[16],
-        #     ),
-        #     body_prop=TimeDependentBodyProperties(
-        #         mu=8 * 2,
-        #         lambda_=8 * 2,
-        #         theta=4 * 2,
-        #         zeta=4 * 2,
-        #         mass_density=1.0,
-        #     ),
-        #     schedule=Schedule(final_time=10, time_step=0.01),
-        #     forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
-        #     obstacle=Obstacle(
-        #         np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
-        #         ObstacleProperties(hardness=100.0, friction=0.1),
-        #     ),
-        #     simulation_config=get_simulation_config(mode),
-        # ),
+        Scenario(
+            name="armadillo_fall",
+            mesh_prop=MeshProperties(
+                dimension=3,
+                mesh_type=M_ARMADILLO_3D,
+                scale=[1],
+                mesh_density=[16],
+            ),
+            body_prop=TimeDependentBodyProperties(
+                mu=8 * 2,
+                lambda_=8 * 2,
+                theta=4 * 2,
+                zeta=4 * 2,
+                mass_density=1.0,
+            ),
+            schedule=Schedule(final_time=final_time, time_step=0.01),
+            forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
+            obstacle=Obstacle(
+                np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
+                ObstacleProperties(hardness=100.0, friction=0.1),
+            ),
+            simulation_config=get_simulation_config(),
+        ),
     ]
 
     simulation_runner.run_examples(
@@ -197,7 +183,7 @@ def run_simulation(mode):
         file=__file__,
         plot_animation=True,
         config=Config(shell=False),
-        save_all=True ##########
+        save_all=True,  ##########
     )
 
 

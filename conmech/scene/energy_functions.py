@@ -77,10 +77,12 @@ class StaticEnergyArguments(NamedTuple):
     use_constant_contact_integral: bool
     # with_self_collisions: bool = False
 
-SELF_COLLISION_SCALAR = 10.
+
+SELF_COLLISION_SCALAR = 10.0
+
 
 def _get_constant_boundary_integral(
-    args: EnergyObstacleArguments, use_nonconvex_friction_law: bool #, with_self_collisions: bool
+    args: EnergyObstacleArguments, use_nonconvex_friction_law: bool  # , with_self_collisions: bool
 ):
     boundary_v_new = args.boundary_velocity_old
     boundary_displacement_step = args.time_step * boundary_v_new
@@ -124,7 +126,9 @@ def _get_constant_boundary_integral(
 
 
 def _get_actual_boundary_integral(
-    acceleration, args: EnergyObstacleArguments, use_nonconvex_friction_law: bool #, with_self_collisions: bool
+    acceleration,
+    args: EnergyObstacleArguments,
+    use_nonconvex_friction_law: bool,  # , with_self_collisions: bool
 ):
     boundary_nodes_count = args.boundary_velocity_old.shape[0]
     boundary_a = acceleration[:boundary_nodes_count, :]  # TODO: boundary slice
@@ -169,9 +173,9 @@ def _get_boundary_integral(
         time_step=args.time_step,
         use_nonconvex_friction_law=use_nonconvex_friction_law,
     )
-    
+
     boundary_values = resistance_normal + resistance_tangential
-    if True: #with_self_collisions:
+    if True:  # with_self_collisions:
         penetration_norm_self = _get_penetration_positive(
             displacement_step=boundary_displacement_step,
             normals=(-1) * args.boundary_obstacle_normals_self,
@@ -182,10 +186,8 @@ def _get_boundary_integral(
             hardness=SELF_COLLISION_SCALAR * args.obstacle_prop.hardness,
             time_step=args.time_step,
         )
-        boundary_values += 0.*resistance_normal_self
-    boundary_integral = (
-        args.surface_per_boundary_node * boundary_values
-    ).sum()
+        boundary_values += 0.0 * resistance_normal_self
+    boundary_integral = (args.surface_per_boundary_node * boundary_values).sum()
     return boundary_integral
 
 

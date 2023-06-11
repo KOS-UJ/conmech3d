@@ -146,7 +146,7 @@ class ScenariosDataset(BaseDataset):
             # current_index += 1
 
             final_catalog = f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
-            label=f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
+            label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
 
             label = cmh.get_run_label(self.config, scenario)
             save_three(

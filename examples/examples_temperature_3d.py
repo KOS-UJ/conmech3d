@@ -141,7 +141,7 @@ def get_expansion_temp_scenarios(mesh_density, final_time):
 
 
 def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
-    config = Config(shell=shell, animation_backend="blender") #matplotlib")
+    config = Config(shell=shell, animation_backend="blender")  # matplotlib")
     config.print_skip = 0.05
     mesh_prop = MeshProperties(
         dimension=3,

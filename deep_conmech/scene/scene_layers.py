@@ -249,8 +249,9 @@ class SceneLayers(Scene):
         )
         return self.from_displacement(new_displacement)
 
-
-    def recenter_by_reduced(self, new_displacement, reduced_exact_acceleration): # TODO: Merge with reorient_to_reduced
+    def recenter_by_reduced(
+        self, new_displacement, reduced_exact_acceleration
+    ):  # TODO: Merge with reorient_to_reduced
         reduced_displacement_new = self.reduced.to_displacement(reduced_exact_acceleration)
         base = self.reduced.get_rotation(reduced_displacement_new)
         position = np.mean(reduced_displacement_new, axis=0)
@@ -258,7 +259,7 @@ class SceneLayers(Scene):
             base=base, position=position, base_displacement=new_displacement
         )
         return recentered_new_displacement
-    
+
     def recenter_reduced_mesh(self):
         displacement = self.reduced.get_displacement(base=self.moved_base, position=self.position)
         self.reduced.set_displacement_old(displacement)
