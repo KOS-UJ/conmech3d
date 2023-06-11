@@ -34,7 +34,7 @@ def load_byte_index(byte_index: int, data_file: BufferedReader):
 
 
 def get_scenes():
-    input_path = "/home/michal/Desktop/conmech/output"
+    input_path = "/home/michal/Desktop/conmech3d/output"
     scene_files = cmh.find_files_by_extension(input_path, "scenes")  # scenes_data
     path_id = "/scenarios/"
     scene_files = [f for f in scene_files if path_id in f]

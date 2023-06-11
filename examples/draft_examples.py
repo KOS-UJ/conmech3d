@@ -26,16 +26,13 @@ from conmech.scenarios.scenarios import (
 )
 from conmech.simulations import simulation_runner
 from conmech.state.obstacle import Obstacle
-from deep_conmech.run_model import get_newest_checkpoint_path
-from deep_conmech.training_config import TrainingConfig
-from examples.draft_compare import compare_latest
 
 
 def main():
     load_dotenv()
     cmh.print_jax_configuration()
 
-    def get_simulation_config(mode='normal', use_pca=False):
+    def get_simulation_config(mode="normal", use_pca=False):
         return SimulationConfig(
             use_normalization=False,
             use_linear_solver=False,
@@ -49,7 +46,7 @@ def main():
             mode=mode,
         )
 
-    final_time = 10
+    final_time = 4
     scale_forces = 5.0
 
     # all_print_scenaros = scenarios.all_print(config.td, config.sc)
@@ -162,17 +159,26 @@ def main():
                 mesh_density=[16],
             ),
             body_prop=TimeDependentBodyProperties(
-                mu=8 * 2,
-                lambda_=8 * 2,
-                theta=4 * 2,
-                zeta=4 * 2,
+                mu=16,
+                lambda_=16,
+                theta=8,
+                zeta=8,
                 mass_density=1.0,
             ),
             schedule=Schedule(final_time=final_time, time_step=0.01),
             forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
             obstacle=Obstacle(
-                np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
-                ObstacleProperties(hardness=100.0, friction=0.1),
+                geometry=None,  # np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
+                properties=ObstacleProperties(hardness=100.0, friction=2.0),  # friction=0.1
+                all_mesh=[
+                    MeshProperties(
+                        dimension=3,
+                        mesh_type="slide_left",
+                        scale=[1],
+                        mesh_density=[16],
+                        initial_position=[0, 0, -2],
+                    )
+                ],
             ),
             simulation_config=get_simulation_config(),
         ),
@@ -182,8 +188,8 @@ def main():
         all_scenarios=all_scenarios,
         file=__file__,
         plot_animation=True,
-        config=Config(shell=False),
-        save_all=True,  ##########
+        config=Config(shell=False, animation_backend="three"),
+        save_all=False,
     )
 
 

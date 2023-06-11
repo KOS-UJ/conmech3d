@@ -151,14 +151,14 @@ def get_pygmsh_bunny(mesh_prop, lifted=False):
 
 def get_pygmsh_armadillo():
     mesh = read_mesh("models/armadillo/armadillo.msh")
-    # scale = 3.0  # 1.0
-    scale = 1.0
+    scale = 0.6
     nodes, elements = mesh_builders_helpers.normalize(mesh.points), mesh.cells_dict["tetra"].astype(
         "long"
     )
     nodes += 0.5
     nodes[:, [1, 2]] = nodes[:, [2, 1]]
     nodes *= scale
+    nodes -= np.mean(nodes, axis=0)
     return nodes, elements
 
 

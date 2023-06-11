@@ -118,7 +118,6 @@ def create_scene(scenario):
 def run_examples(
     all_scenarios, file, plot_animation, config: Config, simulate_dirty_data=False, save_all=False
 ):
-
     scenes = []
     for i, scenario in enumerate(all_scenarios):
         print(f"-----EXAMPLE {i + 1}/{len(all_scenarios)}-----")
@@ -197,7 +196,6 @@ def run_scenario(
     run_config: RunScenarioConfig,
     scene: Scene,
 ) -> Tuple[Scene, str, float]:
-
     time_skip = config.print_skip
     ts = int(time_skip / scenario.time_step)
     plot_scenes_count = [0]

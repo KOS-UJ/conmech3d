@@ -5,7 +5,7 @@ import dmsh
 import numpy as np
 import pygmsh
 
-from conmech.helpers import interpolation_helpers, lnh, mph
+from conmech.helpers import interpolation_helpers, lnh
 from conmech.mesh import (
     mesh_builders_2d,
     mesh_builders_3d,
@@ -91,7 +91,11 @@ def build_initial_mesh(
                     return mesh_builders_3d.get_pygmsh_armadillo()
             return mesh_builders_2d.get_pygmsh_elements_and_nodes(mesh_prop)
 
-        return mph.run_process(inner_function) if create_in_subprocess else inner_function()
+        if create_in_subprocess:
+            from conmech.helpers import mph
+
+            return mph.run_process(inner_function)
+        return inner_function()
 
     if "slide" in mesh_prop.mesh_type:
         return mesh_builders_3d.get_pygmsh_slide(mesh_prop)

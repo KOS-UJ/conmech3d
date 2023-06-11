@@ -9,7 +9,6 @@ from ctypes import ArgumentError
 from pathlib import Path
 
 import jax
-import netron
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -26,9 +25,7 @@ from deep_conmech.data import base_dataset
 from deep_conmech.data.calculator_dataset import CalculatorDataset
 from deep_conmech.data.synthetic_dataset import SyntheticDataset
 from deep_conmech.graph.model_jax import GraphModelDynamicJax, save_tf_model
-from deep_conmech.graph.model_torch import GraphModelDynamicTorch
 from deep_conmech.graph.net_jax import CustomGraphNetJax
-from deep_conmech.graph.net_torch import CustomGraphNet
 from deep_conmech.helpers import dch
 from deep_conmech.training_config import TrainingConfig, TrainingData
 
@@ -48,8 +45,6 @@ def cleanup_distributed():
 
 
 def get_device_count(config):
-    if not config.use_jax:
-        return 1
     return len(jax.local_devices())
 
 
@@ -71,18 +66,9 @@ def initialize_data(config: TrainingConfig):
 def train(config: TrainingConfig):
     train_dataset, all_validation_datasets = initialize_data(config=config)
 
-    if not config.torch_distributed_training:
-        train_single(
-            config, train_dataset=train_dataset, all_validation_datasets=all_validation_datasets
-        )
-    else:
-        world_size = torch.cuda.device_count()
-        torch.multiprocessing.spawn(
-            dist_run,
-            args=(world_size, config),
-            nprocs=world_size,
-            join=True,
-        )
+    train_single(
+        config, train_dataset=train_dataset, all_validation_datasets=all_validation_datasets
+    )
 
 
 def dist_run(
@@ -121,56 +107,29 @@ def train_single(config, rank=0, world_size=1, train_dataset=None, all_validatio
         if config.td.use_dataset_statistics:
             dataset.statistics = statistics
 
-    if config.use_jax:
-        model = GraphModelDynamicJax(
-            train_dataset=train_dataset,
-            all_validation_datasets=all_validation_datasets,
-            print_scenarios=all_print_datasets,
-            config=config,
-            statistics=statistics,
-        )
-    else:
-        net = CustomGraphNet(statistics=statistics, td=config.td).to(rank)
-        if config.load_newest_train:
-            checkpoint_path = get_newest_checkpoint_path(config)
-            net = GraphModelDynamicTorch.load_checkpointed_net(
-                net=net, rank=rank, path=checkpoint_path
-            )
+    model = GraphModelDynamicJax(
+        train_dataset=train_dataset,
+        all_validation_datasets=all_validation_datasets,
+        print_scenarios=all_print_datasets,
+        config=config,
+        statistics=statistics,
+    )
 
-        model = GraphModelDynamicTorch(
-            train_dataset=train_dataset,
-            all_validation_datasets=all_validation_datasets,
-            print_scenarios=all_print_datasets,
-            net=net,
-            config=config,
-            rank=rank,
-            world_size=world_size,
-        )
     if config.load_newest_train:
         model.load_checkpoint(path=checkpoint_path)
     model.train()
 
 
 def visualize(config: TrainingConfig):
+    import netron
+
     checkpoint_path = get_newest_checkpoint_path(config)
     dataset = get_train_dataset(config.td.dataset, config=config)
     dataset.initialize_data()
 
-    if config.use_jax:
-        model_path = "log/jax_model.tflite"
-        state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
-        save_tf_model(model_path, state, dataset)
-    else:
-        # Only weights
-        model_path = checkpoint_path
-
-        model_path = "log/torch_model.onnx"
-        net = CustomGraphNet(statistics=None, td=config.td)
-        net = GraphModelDynamicTorch.load_checkpointed_net(net=net, rank=0, path=checkpoint_path)
-
-        # hstack is currently not supported
-        # https://pytorch.org/docs/stable/onnx_supported_aten_ops.html
-        # GraphModelDynamicTorch.save_onnx_model(model_path, net, dataset)
+    model_path = "log/jax_model.tflite"
+    state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
+    save_tf_model(model_path, state, dataset)
 
     netron.start(model_path)
 
@@ -183,15 +142,9 @@ def plot(config: TrainingConfig):
         statistics = None
     all_print_scenaros = scenarios.all_print(config.td, config.sc)
 
-    if config.use_jax:
-        checkpoint_path = get_newest_checkpoint_path(config)
-        state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
-        GraphModelDynamicJax.plot_all_scenarios(state, all_print_scenaros, config)
-    else:
-        net = CustomGraphNet(statistics=statistics, td=config.td).to(0)
-        checkpoint_path = get_newest_checkpoint_path(config)
-        net = GraphModelDynamicTorch.load_checkpointed_net(net=net, rank=0, path=checkpoint_path)
-        GraphModelDynamicTorch.plot_all_scenarios(net, all_print_scenaros, config)
+    checkpoint_path = get_newest_checkpoint_path(config)
+    state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
+    GraphModelDynamicJax.plot_all_scenarios(state, all_print_scenaros, config)
 
 
 def run_pca(config: TrainingConfig):
@@ -247,7 +200,6 @@ def get_train_dataset(
     if dataset_type == "synthetic":
         train_dataset = SyntheticDataset(
             description="train",
-            use_jax=config.use_jax,
             load_data_to_ram=config.load_training_data_to_ram,
             with_scenes_file=config.with_train_scenes_file,
             randomize=True,
@@ -260,7 +212,6 @@ def get_train_dataset(
     elif dataset_type == "calculator":
         train_dataset = CalculatorDataset(
             description="train",
-            use_jax=config.use_jax,
             all_scenarios=scenarios.all_train(config.td, config.sc),
             load_data_to_ram=config.load_training_data_to_ram,
             with_scenes_file=config.with_train_scenes_file,
@@ -283,7 +234,6 @@ def get_all_val_datasets(config: TrainingConfig, rank: int, world_size: int, dev
         all_val_datasets.append(
             CalculatorDataset(
                 description=description,
-                use_jax=config.use_jax,
                 all_scenarios=all_scenarios,
                 load_data_to_ram=config.load_validation_data_to_ram,
                 with_scenes_file=False,
@@ -312,22 +262,7 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 
 def get_newest_checkpoint_path(config: TrainingConfig):
-    if config.use_jax:
-        return get_newest_checkpoint_path_jax(config)
-
-    def get_index(path):
-        return int(path.split("/")[-1].split(" ")[0])
-
-    saved_model_paths = cmh.find_files_by_extension(config.output_catalog, "pt")
-    if not saved_model_paths:
-        raise ArgumentError("No saved models")
-
-    newest_index = np.argmax(np.array([get_index(path) for path in saved_model_paths]))
-    path = saved_model_paths[newest_index]
-
-    print(f"Taking saved model {path.split('/')[-1]}")
-    return path
-
+    return get_newest_checkpoint_path_jax(config)
 
 def main(args: Namespace):
     cmh.print_jax_configuration()
@@ -351,7 +286,6 @@ def main(args: Namespace):
 
     # dch.set_torch_sharing_strategy()
     dch.set_memory_limit(config=config)
-    print(f"Use JAX: {config.use_jax}")
     print(f"Running using {config.device}")
 
     if args.mode == "train":

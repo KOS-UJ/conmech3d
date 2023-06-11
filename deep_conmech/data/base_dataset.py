@@ -74,7 +74,6 @@ def get_dataloader(
     load_data: bool,
     collate_fn=None,
 ):
-
     sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=shuffle)
     return DataLoader(
         dataset=dataset,
@@ -99,7 +98,6 @@ class BaseDataset:
     def __init__(
         self,
         description: str,
-        use_jax: bool,
         dimension: int,
         data_count: int,
         solve_function: Callable,
@@ -114,7 +112,6 @@ class BaseDataset:
         item_fn: Callable = None,
     ):
         self.dimension = dimension
-        self.use_jax = use_jax
         self.description = description
         self.data_count = data_count
         self.solve_function = solve_function
@@ -534,20 +531,8 @@ class BaseDataset:
         #     return 50
         return self.data_count // self.device_count
 
-    def _getitem_torch(self, index: int):
-        # self.load_data()
-        graph_data = self.get_features_and_targets_data(index)
-        if self.item_fn:
-            return self.item_fn([graph_data.layer_list, graph_data.target_data])
-        return graph_data.layer_list, graph_data.target_data  # , graph_data.scene
-        # return [*graph_data.layer_list, graph_data.target_data]
-
-    @property
-    def _len_torch(self):
-        return self.data_count
-
     def __getitem__(self, index: int):
-        return self._getitem_jax(index) if self.use_jax else self._getitem_torch(index)
+        return self._getitem_jax(index)
 
     def __len__(self):
-        return self._len_jax if self.use_jax else self._len_torch
+        return self._len_jax

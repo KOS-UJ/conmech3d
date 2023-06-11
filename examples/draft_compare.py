@@ -30,6 +30,7 @@ def main():
     compare_latest(checkpoint_path.split("/")[-1])
     input("Press Enter to continue...")
 
+
 def run_simulation(mode):
     def get_simulation_config(mode, use_pca=False):
         return SimulationConfig(
@@ -45,7 +46,7 @@ def run_simulation(mode):
             mode=mode,
         )
 
-    final_time = 1.2 # 8
+    final_time = 1.2  # 8
     scale_forces = 5.0
 
     # all_print_scenaros = scenarios.all_print(config.td, config.sc)

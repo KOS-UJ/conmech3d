@@ -21,7 +21,7 @@ class LossRaport:
         loss_vars = vars(loss)
 
         total_count = self._count + loss.count
-        for (key, value) in self_vars.items():
+        for key, value in self_vars.items():
             if value is not None:
                 if normalize:
                     p1 = value * float(self._count) / total_count
@@ -36,14 +36,14 @@ class LossRaport:
 
     def normalize(self):
         self_vars = vars(self)
-        for (key, value) in self_vars.items():
+        for key, value in self_vars.items():
             if key != "_count" and value is not None:
                 self_vars[key] /= self._count
 
     def get_iterator(self):
         data = vars(self).copy()
         del data["_count"]
-        for (key, value) in vars(self).items():
+        for key, value in vars(self).items():
             if value is None:
                 del data[key]
         return data.items()

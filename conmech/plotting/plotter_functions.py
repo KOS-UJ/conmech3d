@@ -28,7 +28,7 @@ def get_data(scene, get_edges):
     return scene.boundary_nodes, convert_to_int_list(boundary_data)
 
 
-def save_three(scene, step, folder, skip=10):  # 1
+def save_three(scene, step, folder, skip=1):
     # Three.js
     if step % skip != 0:
         return
@@ -88,8 +88,7 @@ def save_results_three(file_path, json_dict):
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
 
-    # list_path = f"{folder}/list.json"
-    list_path = "output/list.json"
+    list_path = "output/three_list.json"
     cmh.clear_file(list_path)
 
     folder_list = [f[0] for f in os.walk("output") if "0.json" in f[2]]  # [1:]
@@ -106,8 +105,8 @@ def save_results_three(file_path, json_dict):
 
 
 def plot_using_blender(output: bool = True):
-    path = "~/Desktop/Blender/blender-3.2.0-linux-x64/blender"
-    args = " --background --python ~/Desktop/conmech/blender/load.py --render"
+    path = "~/Desktop/Blender/blender-3.2.0-linux-x64/blender" # TODO: Move to configuration
+    args = " --background --python ~/Desktop/conmech3d/blender/load.py --render"
     print("Plotting using Blender...")
     stdout = sys.stdout if output else subprocess.DEVNULL
     subprocess.call(path + args, shell=True, stdout=stdout)

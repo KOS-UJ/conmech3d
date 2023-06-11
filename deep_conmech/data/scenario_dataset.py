@@ -25,7 +25,6 @@ class ScenariosDataset(BaseDataset):
     def __init__(
         self,
         description: str,
-        use_jax: bool,
         all_scenarios: List[Scenario],
         solve_function: Callable,
         load_data_to_ram: bool,
@@ -41,7 +40,6 @@ class ScenariosDataset(BaseDataset):
 
         super().__init__(
             description=description,
-            use_jax=use_jax,
             dimension=check_and_get_dimension(all_scenarios),
             data_count=self.get_data_count(self.all_scenarios),
             solve_function=solve_function,

@@ -52,7 +52,6 @@ class SchurComplement(Optimization):
         contact_indices: slice,
         free_indices: slice,
     ):
-
         size = matrix.shape[0] // dimension
 
         def get_slice(indices, dim):
