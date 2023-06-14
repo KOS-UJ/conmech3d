@@ -1,6 +1,6 @@
 numpy==1.23.5
-jax==0.4.7
-jaxlib==0.4.7
+jax==0.4.12
+jaxlib==0.4.12
 numba==0.57.0
 cython==0.29.33
 scipy==1.10.1
@@ -13,5 +13,6 @@ meshzoo==0.11.1
 tqdm==4.64.1
 psutil==5.9.5
 pytest==7.2.1
+pytest-xdist==3.3.1
 pandas==2.0.2
 python-dotenv==1.0.0

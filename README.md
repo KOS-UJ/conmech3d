@@ -24,7 +24,8 @@ Install Gmsh used for mesh construction and dependencies from "requirements.txt"
 
 To use JAX with GPU support, follow the guide at https://github.com/google/jax#installation
 
-    pip install --upgrade "jax[cuda11_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    <!-- pip install --upgrade "jax[cuda11_local]" -f https://storage.googleapis.com/ -->
+    pip install --upgrade "jax[cuda12_local]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 ### Usage
 

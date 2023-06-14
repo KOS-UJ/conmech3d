@@ -214,7 +214,7 @@ def run_scenario(
     #     final_catalog = ""
     #     scenes_path = ""
     #     scenes_path_reduced = ""
-    label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"  # {start_time}_
+    label = f"{scenario.name}_{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"  # {start_time}_
     scenes_path = f"{final_catalog}/scenarios/{label}_DATA.scenes"
     scenes_path_reduced = f"{final_catalog}/scenarios_reduced/{label}_DATA.scenes"
 
