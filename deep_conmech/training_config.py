@@ -53,7 +53,7 @@ class TrainingData:
     use_dataset_statistics: bool = True
     input_batch_norm: bool = False
     internal_batch_norm: bool = False
-    layer_norm: bool = False # TODO: Test
+    layer_norm: bool = False  # TODO: Test
 
     dropout_rate: Optional[float] = 0.5  # None  # 0.0  # 0.1 # 0.2  0.05
     skip_connections: bool = True
@@ -77,11 +77,9 @@ class TrainingData:
 class TrainingConfig(Config):
     td: TrainingData = TrainingData()
 
-    use_jax: bool = True
     device: str = "cuda"  # "cpu" if TEST else "cuda"
     #:" + ",".join(map(str, DEVICE_IDS)))  # torch.cuda.is_available()
 
-    torch_distributed_training = True and not use_jax
     dataloader_workers = 4
     generate_data_in_subprocesses = False  # True
     synthetic_generation_workers = 4

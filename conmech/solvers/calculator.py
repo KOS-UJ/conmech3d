@@ -150,7 +150,10 @@ class Calculator:
                     scene.exact_acceleration
                 )
             else:
-                scene.exact_acceleration, scene.reduced.exact_acceleration = cmh.get_exact_acceleration(scene=scene, path=dense_path)
+                (
+                    scene.exact_acceleration,
+                    scene.reduced.exact_acceleration,
+                ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
 
             scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
@@ -159,14 +162,19 @@ class Calculator:
                 scene.lower_acceleration_from_position(scene.reduced.lifted_acceleration)
             )
 
-            scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)            
-            scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(new_displacement=scene.norm_lifted_new_displacement, reduced_exact_acceleration=scene.reduced.exact_acceleration)
+            scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(
+                scene.lifted_acceleration
+            )
+            scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
+                new_displacement=scene.norm_lifted_new_displacement,
+                reduced_exact_acceleration=scene.reduced.exact_acceleration,
+            )
 
             # norm_exact_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)
             # print("NORM MAIN:", np.linalg.norm(norm_exact_new_displacement))
             # print("NORM SKINNING:", np.linalg.norm(scene.norm_lifted_new_displacement))
             # print("NORM DIFF:", np.linalg.norm(norm_exact_new_displacement - scene.norm_lifted_new_displacement))
-            
+
         return scene.exact_acceleration, None
         # if dense_path is None:
         #     return scene.lifted_acceleration, None
@@ -198,8 +206,13 @@ class Calculator:
             )
             scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
-        scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
-        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(new_displacement=scene.norm_lifted_new_displacement, reduced_exact_acceleration=scene.reduced.exact_acceleration)
+        scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(
+            scene.lifted_acceleration
+        )
+        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
+            new_displacement=scene.norm_lifted_new_displacement,
+            reduced_exact_acceleration=scene.reduced.exact_acceleration,
+        )
 
         return np.array(exact_acceleration), None
 

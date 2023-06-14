@@ -5,7 +5,6 @@ import time
 from contextlib import ContextDecorator
 from ctypes import ArgumentError
 from typing import Any
-
 import pandas as pd
 
 # Inspired by https://github.com/realpython/codetiming

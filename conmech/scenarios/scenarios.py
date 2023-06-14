@@ -646,7 +646,7 @@ def bunny_fall_3d(
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(  # 0.3
             np.array([[[0.0, arg, 1.0]], [[0.0, 0.0, -0.5]]]),
-            ObstacleProperties(hardness=100.0, friction=2.0), #friction=5.0
+            ObstacleProperties(hardness=100.0, friction=2.0),  # friction=5.0
         ),
         simulation_config=simulation_config,
     )
@@ -750,7 +750,7 @@ def bunny_obstacles(
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(
             geometry=None,
-            properties=ObstacleProperties(hardness=100.0, friction=2.0), # 100 5.0 # 1000
+            properties=ObstacleProperties(hardness=100.0, friction=2.0),  # 100 5.0 # 1000
             all_mesh=obstacle_meshes,
         ),
         simulation_config=simulation_config,

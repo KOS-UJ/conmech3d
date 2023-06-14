@@ -48,7 +48,7 @@ setup(
     zip_safe=False,
 )
 
-
+# Running:
 # python setup.py build_ext --inplace
 # (export CC=clang;) python setup.py build_ext --inplace
 

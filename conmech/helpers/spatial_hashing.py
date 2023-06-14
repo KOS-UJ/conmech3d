@@ -86,16 +86,13 @@ def query_hasher_numba(
     for c1 in range(
         int((query_node[0] - max_dist) / spacing), int((query_node[0] + max_dist) / spacing) + 1
     ):
-
         for c2 in range(
             int((query_node[1] - max_dist) / spacing), int((query_node[1] + max_dist) / spacing) + 1
         ):
-
             for c3 in range(
                 int((query_node[2] - max_dist) / spacing),
                 int((query_node[2] + max_dist) / spacing) + 1,
             ):
-
                 h = custom_hash_numba(c1=c1, c2=c2, c3=c3, table_size=table_size)
                 start = cell_starts[h]
                 end = cell_starts[h + 1]

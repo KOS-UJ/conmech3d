@@ -343,7 +343,7 @@ class GraphModelDynamicJax:
 
         data = [get_layer_list_and_target_data(bd) for bd in batch_data]
 
-        compare=True
+        compare = True
 
         all_target_data = [
             data[d][1].normalized_new_displacement for d in range(devices_count)
@@ -351,13 +351,14 @@ class GraphModelDynamicJax:
         sharded_targets = jax.device_put_sharded(
             all_target_data, devices
         )  # TODO: check order with pmap
-        
+
         if not compare:
             all_args = [
-                prepare_input(layer_list) for layer_list in [data[d][0] for d in range(devices_count)]
+                prepare_input(layer_list)
+                for layer_list in [data[d][0] for d in range(devices_count)]
             ]
             sharded_args = jax.device_put_sharded(all_args, devices)
-            
+
             if train:
                 states, losses = apply_model_train(states, sharded_args, sharded_targets)
             else:
@@ -367,11 +368,11 @@ class GraphModelDynamicJax:
             other_target_data = [
                 data[d][1].normalized_new_displacement_skinning for d in range(devices_count)
             ]
-            sharded_other_targets = jax.device_put_sharded(
-                other_target_data, devices
+            sharded_other_targets = jax.device_put_sharded(other_target_data, devices)
+            losses = apply_model_compare(
+                sharded_targets=sharded_targets, sharded_other_targets=sharded_other_targets
             )
-            losses = apply_model_compare(sharded_targets=sharded_targets, sharded_other_targets=sharded_other_targets)
-  
+
         displacement_loss = jnp.mean(losses) / SCALE
         # print(displacement_loss)
 
@@ -461,11 +462,13 @@ def solve(
             scene.reduced.exact_acceleration, _ = Calculator.solve(
                 scene=scene.reduced,
                 energy_functions=energy_functions[1],  # 0],
-                initial_a=scene.reduced.lifted_acceleration, #scene.reduced.exact_acceleration, #initial_reduced,
+                initial_a=scene.reduced.lifted_acceleration,  # scene.reduced.exact_acceleration, #initial_reduced,
                 timer=timer,
             )
         else:
-            scene.exact_acceleration, scene.reduced.exact_acceleration = cmh.get_exact_acceleration(scene=scene, path=dense_path)
+            scene.exact_acceleration, scene.reduced.exact_acceleration = cmh.get_exact_acceleration(
+                scene=scene, path=dense_path
+            )
 
         scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
@@ -485,7 +488,10 @@ def solve(
         scene.norm_lifted_new_displacement = apply_net(args) / SCALE
 
     with timer["jax_translation"]:
-        scene.recentered_norm_lifted_new_displacement  = scene.recenter_by_reduced(new_displacement=scene.norm_lifted_new_displacement, reduced_exact_acceleration=scene.reduced.exact_acceleration)
+        scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
+            new_displacement=scene.norm_lifted_new_displacement,
+            reduced_exact_acceleration=scene.reduced.exact_acceleration,
+        )
         scene.lifted_acceleration = np.array(
             scene.from_displacement(scene.recentered_norm_lifted_new_displacement)
         )
@@ -572,7 +578,6 @@ def get_loss_function(states, sharded_args, sharded_targets, train):
         return losses, new_batch_stats
 
     return loss_function
-
 
 
 @partial(jax.pmap, axis_name="models")
