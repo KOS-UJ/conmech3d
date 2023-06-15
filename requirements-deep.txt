@@ -1,8 +1,8 @@
 # deep conmech
+torch
 flax==0.6.10
 orbax-checkpoint==0.2.5
 
-torch==2.0.1
 torch-geometric==2.3.1
 
 tensorflow==2.12.0

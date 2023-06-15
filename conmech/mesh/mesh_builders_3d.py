@@ -99,10 +99,10 @@ def get_pygmsh_slide(mesh_prop):
         if "left" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-4.0, -1.0, -0.6],
-                    [4.0, -1.0, -0.6],
-                    [4.0, 1.0, 0.6],
-                    [-4.0, 1.0, 0.6],
+                    [-2.0, -1.0, -0.6],
+                    [2.0, -1.0, -0.6],
+                    [2.0, 1.0, 0.6],
+                    [-2.0, 1.0, 0.6],
                 ]
             )
         elif "right" in mesh_prop.mesh_type:

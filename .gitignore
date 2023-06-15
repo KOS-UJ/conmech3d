@@ -16,7 +16,7 @@ log/*
 datasets/*
 blender/output/*
 output**/*
-three/**/*.json
+build/*
 
 *.c
 
