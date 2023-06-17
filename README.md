@@ -19,10 +19,9 @@ Contact mechanics describes behaviour of the physical body in contact with the o
 
 ### Main functionality
 
-We recomend creating a virtual environment, for example using Conda
+Create a virtual environment (Python 3.10 is recommended)
 
-    virtualenv .venv --python=python3.10
-    conda deactivate
+    python -m venv .venv
     source .venv/bin/activate
 
 Install Gmsh used for mesh construction 

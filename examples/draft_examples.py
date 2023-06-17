@@ -60,13 +60,13 @@ def main():
         #     simulation_config=get_simulation_config(mode),
         #     scale_forces=scale_forces,
         # ),
-        # bunny_obstacles(
-        #     mesh_density=32,
-        #     scale=1,
-        #     final_time=final_time,
-        #     simulation_config=get_simulation_config(mode),
-        #     scale_forces=scale_forces,
-        # ),
+        bunny_obstacles(
+            mesh_density=32,
+            scale=1,
+            final_time=final_time,
+            simulation_config=get_simulation_config(),
+            scale_forces=scale_forces,
+        ),
         # bunny_rotate_3d(
         #     mesh_density=32,
         #     scale=1,
@@ -159,10 +159,10 @@ def main():
                 mesh_density=[16],
             ),
             body_prop=TimeDependentBodyProperties(
-                mu=16,
-                lambda_=16,
-                theta=8,
-                zeta=8,
+                mu=16 * 4,
+                lambda_=16 * 4,
+                theta=8 * 4,
+                zeta=8 * 4,
                 mass_density=1.0,
             ),
             schedule=Schedule(final_time=final_time, time_step=0.01),
@@ -170,7 +170,7 @@ def main():
             obstacle=Obstacle(
                 geometry=None,  # np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
                 properties=ObstacleProperties(
-                    hardness=100.0, friction=2.0
+                    hardness=200.0, friction=4.0
                 ),  # friction=0.1
                 all_mesh=[
                     MeshProperties(
@@ -178,7 +178,7 @@ def main():
                         mesh_type="slide_left",
                         scale=[1],
                         mesh_density=[16],
-                        initial_position=[0, 0, -2],
+                        initial_position=[0, 0, -1],  # -2],
                     )
                 ],
             ),
