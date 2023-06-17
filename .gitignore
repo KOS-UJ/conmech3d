@@ -17,6 +17,7 @@ datasets/*
 blender/output/*
 output**/*
 build/*
+cython_modules/*.html
 
 *.c
 

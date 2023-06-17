@@ -37,6 +37,13 @@ Install dependencies from "requirements.txt"
 
     pip install -r requirements.txt
 
+### Additional dependencies required for tetrahedral skinning
+
+Compile Cython files form folder cython_modules by running
+
+    cd cython_modules
+    python setup.py build_ext --inplace
+
 ### Additional dependencies required for GNN model
 
 Install Pytorch. Only CPU version is required, as operations on GPU are performed using JAX. Follow the guide at https://pytorch.org/get-started/locally/. For example, to install Pytorch on Linux with CPU support run
@@ -46,13 +53,6 @@ Install Pytorch. Only CPU version is required, as operations on GPU are performe
 Install dependencies from "requirements-deep.txt"
 
     pip install -r requirements-deep.txt
-
-### Additional dependencies required for tetrahedral skinning
-
-Compile Cython files form folder cython_modules by running
-
-    cd cython_modules
-    python setup.py build_ext --inplace
 
 
 

@@ -83,6 +83,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         var showDense = true;
         var showReduced = false;
 
+        const meshColor = 0x8ecae6; // 0xd9dbdc;
+        const obstacleColor = 0xffb703; // 0xd9dbdc;
+
         var scene;
         var gRenderer;
         var gCamera;
@@ -234,7 +237,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 var geometry = new THREE.BufferGeometry();
                 geometry.setAttribute('position', new THREE.BufferAttribute(this.denseNodes, 3));
                 geometry.setIndex(boundary_surfaces);
-                var material = new THREE.MeshPhongMaterial({ color: 0xd9dbdc, side: THREE.DoubleSide });
+                var material = new THREE.MeshPhongMaterial({ color: meshColor, side: THREE.DoubleSide });
                 material.flatShading = true;
                 this.denseMesh = new THREE.Mesh(geometry, material);
                 this.denseMesh.name = "surfaceMesh";
@@ -332,7 +335,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     var geometry = new THREE.BufferGeometry();
                     geometry.setAttribute('position', new THREE.BufferAttribute(obstacle_nodes, 3));
                     geometry.setIndex(obstacle_boundary_surfaces);
-                    var material = new THREE.MeshPhongMaterial({ color: 0xd9dbdc, side: THREE.DoubleSide });
+                    var material = new THREE.MeshPhongMaterial({ color: obstacleColor, side: THREE.DoubleSide });
                     material.flatShading = true;
                     var obstacleMesh = new THREE.Mesh(geometry, material);
                     obstacleMesh.name = 'obstacleMesh${i}';
