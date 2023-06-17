@@ -22,20 +22,26 @@ def get_mean(dimension, scale):
 
 
 def generate_mesh_corner_scalars(dimension: int, scale: float):
-    random_vector = nph.generate_normal(rows=(2**dimension), columns=1, sigma=scale / 3)
+    random_vector = nph.generate_normal(
+        rows=(2**dimension), columns=1, sigma=scale / 3
+    )
     clipped_vector = np.maximum(-scale, np.minimum(random_vector, scale))
     normalized_cliped_vector = clipped_vector - np.mean(clipped_vector)
     return 1 + normalized_cliped_vector
 
 
 def generate_corner_vectors(dimension: int, scale: float):
-    corner_vectors = nph.generate_normal(rows=(2**dimension), columns=dimension, sigma=scale / 3)
+    corner_vectors = nph.generate_normal(
+        rows=(2**dimension), columns=dimension, sigma=scale / 3
+    )
     normalized_corner_vectors = corner_vectors - np.mean(corner_vectors, axis=0)
     return normalized_corner_vectors
 
 
 @numba.njit
-def interpolate_scaled_nodes_numba(scaled_nodes: np.ndarray, corner_vectors: np.ndarray):
+def interpolate_scaled_nodes_numba(
+    scaled_nodes: np.ndarray, corner_vectors: np.ndarray
+):
     if np.min(scaled_nodes) < 0 or np.max(scaled_nodes) > 1:
         raise ArgumentError
 
@@ -116,7 +122,9 @@ def scale_nodes_to_cube(nodes):
     return scaled_nodes
 
 
-def interpolate_3d_corner_vectors(nodes: np.ndarray, base: np.ndarray, corner_vectors: np.ndarray):
+def interpolate_3d_corner_vectors(
+    nodes: np.ndarray, base: np.ndarray, corner_vectors: np.ndarray
+):
     # orthonormal matrix; inverse equals transposition
     upward_nodes = lnh.get_in_base(nodes, base.T)
     scaled_nodes = scale_nodes_to_cube(upward_nodes)
@@ -161,9 +169,9 @@ def get_top_indices(array, indices_count):
 
 
 def approximate_internal(base_values, closest_nodes, closest_weights):
-    return (base_values[closest_nodes] * closest_weights.reshape(*closest_weights.shape, 1)).sum(
-        axis=1
-    )
+    return (
+        base_values[closest_nodes] * closest_weights.reshape(*closest_weights.shape, 1)
+    ).sum(axis=1)
 
 
 # @numba.njit
@@ -178,7 +186,9 @@ def get_interlayer_data_numba(
     _ = closest_count
 
     return interpolate_nodes(
-        base_nodes=base_nodes, base_elements=base_elements, query_nodes=interpolated_nodes
+        base_nodes=base_nodes,
+        base_elements=base_elements,
+        query_nodes=interpolated_nodes,
     )
 
     # _ = base_elements
@@ -219,7 +229,9 @@ def get_interlayer_data_numba(
 
 # pylint: disable=invalid-name
 # pylint: disable=too-many-arguments
-@numba.njit(fastmath=True, error_model="numpy")  # parallel=True)  # parallel=True)#, fastmath=True)
+@numba.njit(
+    fastmath=True, error_model="numpy"
+)  # parallel=True)  # parallel=True)#, fastmath=True)
 def find_closest_nodes_numba(
     closest_nodes,
     closest_weights,
@@ -274,7 +286,8 @@ def find_closest_nodes_numba(
             # if(((element_center - node) ** 2).sum() > element_ball_radius_squared):
 
             node_weights[:3] = np.linalg.solve(
-                element_nodes_matrices_T[element_id], node - normalizing_element_nodes_T[element_id]
+                element_nodes_matrices_T[element_id],
+                node - normalizing_element_nodes_T[element_id],
             )
             node_weights[3] = 1 - node_weights[:3].sum()  # weights sum to one
 
@@ -306,12 +319,16 @@ def get_interlayer_data_skinning_numba(
     closest_weights = np.full_like(closest_distances, fill_value=-1e8)
 
     element_centers = element_nodes.mean(axis=1)
-    element_center_distances = element_nodes - element_centers.reshape(-1, 1, dim).repeat(
-        element_nodes_count, 1
+    element_center_distances = element_nodes - element_centers.reshape(
+        -1, 1, dim
+    ).repeat(element_nodes_count, 1)
+    element_ball_radiuses = (
+        np.linalg.norm(element_center_distances, axis=2).max(axis=1) + padding
     )
-    element_ball_radiuses = np.linalg.norm(element_center_distances, axis=2).max(axis=1) + padding
 
-    element_nodes_matrices_T = (element_nodes[:, :dim] - element_nodes[:, [dim]]).transpose(0, 2, 1)
+    element_nodes_matrices_T = (
+        element_nodes[:, :dim] - element_nodes[:, [dim]]
+    ).transpose(0, 2, 1)
     normalizing_element_nodes_T = element_nodes[:, [dim]].reshape(-1, 3)
 
     ready_nodes_mask = np.zeros(nodes_count, dtype=bool)

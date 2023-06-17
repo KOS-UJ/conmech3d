@@ -17,12 +17,17 @@ def test_matrices_2d_integrals():
     area = scale_x * scale_y
     initial_nodes, elements = mesh_builders.build_mesh(
         mesh_prop=MeshProperties(
-            dimension=2, mesh_type="meshzoo_rectangle", mesh_density=[3], scale=[scale_x, scale_y]
+            dimension=2,
+            mesh_type="meshzoo_rectangle",
+            mesh_density=[3],
+            scale=[scale_x, scale_y],
         ),
     )
 
     # Act
-    edges_features_matrix, element_initial_volume = sut_2d(elements=elements, nodes=initial_nodes)
+    edges_features_matrix, element_initial_volume = sut_2d(
+        elements=elements, nodes=initial_nodes
+    )
 
     # Assert
     np.testing.assert_allclose(element_initial_volume.sum(), area)
@@ -50,7 +55,9 @@ def test_matrices_3d_integrals():
     )
 
     # Act
-    edges_features_matrix, element_initial_volume = sut_3d(elements=elements, nodes=initial_nodes)
+    edges_features_matrix, element_initial_volume = sut_3d(
+        elements=elements, nodes=initial_nodes
+    )
 
     # Assert
     np.testing.assert_allclose(element_initial_volume.sum(), 1)

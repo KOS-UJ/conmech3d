@@ -41,9 +41,9 @@ def save_three(scene, step, folder, skip=1):
     else:
         nodes_reduced, boundary_edges_reduced = [], []
 
-    normalized_nodes = (scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement)[
-        scene.boundary_indices
-    ]
+    normalized_nodes = (
+        scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
+    )[scene.boundary_indices]
     highlighted_nodes_list = [
         convert_to_list(nodes[scene.self_collisions_mask]),
         convert_to_list(normalized_nodes[scene.self_collisions_mask]),
@@ -105,7 +105,7 @@ def save_results_three(file_path, json_dict):
 
 
 def plot_using_blender(output: bool = True):
-    path = "~/Desktop/Blender/blender-3.2.0-linux-x64/blender" # TODO: Move to configuration
+    path = "~/Desktop/Blender/blender-3.2.0-linux-x64/blender"  # TODO: Move to configuration
     args = " --background --python ~/Desktop/conmech3d/blender/load.py --render"
     print("Plotting using Blender...")
     stdout = sys.stdout if output else subprocess.DEVNULL
@@ -124,7 +124,9 @@ def plot_scenario_animation(
 ):
     t_scale = get_t_scale(scenario, index_skip, plot_scenes_count, all_scenes_path)
     plot_function = (
-        plotter_2d.plot_animation if scenario.dimension == 2 else plotter_3d.plot_animation
+        plotter_2d.plot_animation
+        if scenario.dimension == 2
+        else plotter_3d.plot_animation
     )
     plot_function(
         save_path=animation_path,

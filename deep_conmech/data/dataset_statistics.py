@@ -55,7 +55,9 @@ def get_mean(old_mean, old_size, new_data):
 def get_variance(old_variance, old_size, new_data, true_mean=None):
     if true_mean is None:
         batch_mean = new_data.mean(axis=0, dtype=torch.float64)
-        batch_variance = ((new_data - batch_mean) ** 2).sum(axis=0, dtype=torch.float64) / (
+        batch_variance = ((new_data - batch_mean) ** 2).sum(
+            axis=0, dtype=torch.float64
+        ) / (
             len(new_data) - 1
         )  #  unbiased estimator
     else:

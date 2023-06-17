@@ -15,7 +15,11 @@ def obstacle_heat(
     tangential_velocity,
     heat_coeff,
 ):
-    return (penetration > 0) * heat_coeff * nph.euclidean_norm(tangential_velocity, keepdims=True)
+    return (
+        (penetration > 0)
+        * heat_coeff
+        * nph.euclidean_norm(tangential_velocity, keepdims=True)
+    )
 
 
 def integrate_boundary_temperature(
@@ -29,7 +33,8 @@ def integrate_boundary_temperature(
     boundary_displacement_step = time_step * boundary_velocity_new
     penetration_norm = _get_penetration_positive(
         displacement_step=boundary_displacement_step,
-        normals=(-1) * boundary_obstacle_normals,  # TODO: Check this / boundary_obstacle_normals,
+        normals=(-1)
+        * boundary_obstacle_normals,  # TODO: Check this / boundary_obstacle_normals,
         initial_penetration=initial_penetration,
     )
 
@@ -63,9 +68,10 @@ class SceneTemperature(Scene):
         self.heat = None
 
     def get_normalized_energy_temperature_np(self, normalized_acceleration):
-        normalized_t_rhs_boundary, normalized_t_rhs_free = self.get_all_normalized_t_rhs_np(
-            normalized_acceleration
-        )
+        (
+            normalized_t_rhs_boundary,
+            normalized_t_rhs_free,
+        ) = self.get_all_normalized_t_rhs_np(normalized_acceleration)
         return (
             lambda normalized_boundary_t_vector: energy(
                 nph.unstack(normalized_boundary_t_vector, 1),
@@ -107,7 +113,9 @@ class SceneTemperature(Scene):
         return normalized_t_rhs_boundary, normalized_t_rhs_free
 
     def get_normalized_t_rhs_jax(self, normalized_acceleration):  # TODO: jax.jit
-        U = self.matrices.acceleration_operator[self.independent_indices, self.independent_indices]
+        U = self.matrices.acceleration_operator[
+            self.independent_indices, self.independent_indices
+        ]
 
         velocity_new = jnp.array(
             self.normalized_velocity_old + normalized_acceleration * self.time_step
@@ -119,8 +127,12 @@ class SceneTemperature(Scene):
         A += (-1) * self.matrices.thermal_expansion @ velocity_new_vector
         A += (1 / self.time_step) * U @ self.t_old
 
-        obstacle_heat_integral = jnp.array(self.get_obstacle_heat_integral(boundary_velocity_new))
-        A += jxh.complete_data_with_zeros(data=obstacle_heat_integral, nodes_count=self.nodes_count)
+        obstacle_heat_integral = jnp.array(
+            self.get_obstacle_heat_integral(boundary_velocity_new)
+        )
+        A += jxh.complete_data_with_zeros(
+            data=obstacle_heat_integral, nodes_count=self.nodes_count
+        )
         return A
 
     def get_obstacle_heat_integral(self, boundary_velocity_new):

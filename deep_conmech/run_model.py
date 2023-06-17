@@ -51,7 +51,9 @@ def get_device_count(config):
 def initialize_data(config: TrainingConfig):
     device_count = get_device_count(config)
 
-    train_dataset = get_train_dataset(config.td.dataset, config=config, device_count=device_count)
+    train_dataset = get_train_dataset(
+        config.td.dataset, config=config, device_count=device_count
+    )
     train_dataset.initialize_data()
 
     all_validation_datasets = get_all_val_datasets(
@@ -67,7 +69,9 @@ def train(config: TrainingConfig):
     train_dataset, all_validation_datasets = initialize_data(config=config)
 
     train_single(
-        config, train_dataset=train_dataset, all_validation_datasets=all_validation_datasets
+        config,
+        train_dataset=train_dataset,
+        all_validation_datasets=all_validation_datasets,
     )
 
 
@@ -81,7 +85,9 @@ def dist_run(
     cleanup_distributed()
 
 
-def train_single(config, rank=0, world_size=1, train_dataset=None, all_validation_datasets=None):
+def train_single(
+    config, rank=0, world_size=1, train_dataset=None, all_validation_datasets=None
+):
     device_count = get_device_count(config)
     if train_dataset is None:
         train_dataset = get_train_dataset(
@@ -93,7 +99,9 @@ def train_single(config, rank=0, world_size=1, train_dataset=None, all_validatio
         )
         train_dataset.load_indices()
 
-    statistics = train_dataset.get_statistics() if config.td.use_dataset_statistics else None
+    statistics = (
+        train_dataset.get_statistics() if config.td.use_dataset_statistics else None
+    )
     if config.td.use_dataset_statistics:
         train_dataset.statistics = statistics
 
@@ -227,10 +235,14 @@ def get_train_dataset(
     return train_dataset
 
 
-def get_all_val_datasets(config: TrainingConfig, rank: int, world_size: int, device_count: int):
+def get_all_val_datasets(
+    config: TrainingConfig, rank: int, world_size: int, device_count: int
+):
     all_val_datasets = []
     for all_scenarios in scenarios.all_validation(config.td, config.sc):
-        description = "validation_" + str.join("/", [scenario.name for scenario in all_scenarios])
+        description = "validation_" + str.join(
+            "/", [scenario.name for scenario in all_scenarios]
+        )
         all_val_datasets.append(
             CalculatorDataset(
                 description=description,
@@ -254,7 +266,9 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
     all_checkpoint_paths = cmh.find_files_by_name(config.output_catalog, "checkpoint")
     if not all_checkpoint_paths:
         raise ArgumentError("No saved models")
-    newest_index = np.argmax(np.array([get_index_jax(path) for path in all_checkpoint_paths]))
+    newest_index = np.argmax(
+        np.array([get_index_jax(path) for path in all_checkpoint_paths])
+    )
 
     path = str(Path(all_checkpoint_paths[newest_index]).parent.absolute())
     print(f"============================ Taking saved model {path.split('/')[-1]}")
@@ -263,6 +277,7 @@ def get_newest_checkpoint_path_jax(config: TrainingConfig):
 
 def get_newest_checkpoint_path(config: TrainingConfig):
     return get_newest_checkpoint_path_jax(config)
+
 
 def main(args: Namespace):
     cmh.print_jax_configuration()

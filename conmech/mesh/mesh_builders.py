@@ -118,7 +118,9 @@ def special_mesh(mesh_prop):
             ],
             mesh_size=0.1,
         )
-        geom.set_mesh_size_callback(mesh_builders_helpers.get_mesh_size_callback(mesh_prop))
+        geom.set_mesh_size_callback(
+            mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        )
         nodes, elements = mesh_builders_helpers.get_nodes_and_elements(geom, 2)
     return nodes, elements
 

@@ -116,7 +116,9 @@ def prepare_data(config: TrainingConfig, scenes_path: str):
         moved_nodes_list = []
         forces_list = []
 
-        for index in cmh.get_tqdm(range(data_count), config=config, desc="Preparing data to save"):
+        for index in cmh.get_tqdm(
+            range(data_count), config=config, desc="Preparing data to save"
+        ):
             setting = load_function(index=index)
             moved_nodes_list.append(setting.moved_nodes)
             forces_list.append(setting.forces)
@@ -159,7 +161,9 @@ def main():
 
     scenario = Scenario(
         name="polygon_rotate",
-        mesh_prop=MeshProperties(dimension=2, mesh_type=M_POLYGON, scale=[1], mesh_density=[32]),
+        mesh_prop=MeshProperties(
+            dimension=2, mesh_type=M_POLYGON, scale=[1], mesh_density=[32]
+        ),
         body_prop=default_body_prop,
         schedule=Schedule(final_time=8.0),
         forces_function=f_rotate,

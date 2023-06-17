@@ -297,7 +297,11 @@ if __name__ == "__main__":
     colors = pl.cm.jet(np.linspace(0, 1, len(ks)))
     for i, k in enumerate(ks):
         plt.plot(
-            h_ticks, ue[k, hs[0] : hs[-1] + 1], "s-", label="$2^{-" + str(k) + "}$", color=colors[i]
+            h_ticks,
+            ue[k, hs[0] : hs[-1] + 1],
+            "s-",
+            label="$2^{-" + str(k) + "}$",
+            color=colors[i],
         )
     plt.xticks(h_ticks, h_ticks)
     plt.legend(title="time step: k")
@@ -328,7 +332,11 @@ if __name__ == "__main__":
     colors = pl.cm.jet(np.linspace(0, 1, len(ks)))
     for i, k in enumerate(ks):
         plt.plot(
-            h_ticks, te[k, hs[0] : hs[-1] + 1], "s-", label="$2^{-" + str(k) + "}$", color=colors[i]
+            h_ticks,
+            te[k, hs[0] : hs[-1] + 1],
+            "s-",
+            label="$2^{-" + str(k) + "}$",
+            color=colors[i],
         )
     plt.xticks(h_ticks, h_ticks)
     plt.legend(title="time step: k")

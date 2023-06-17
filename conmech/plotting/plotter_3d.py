@@ -94,7 +94,9 @@ def plot_frame(
 
 
 def draw_parameters(axes, scene: Scene, current_time):
-    annotation = plotter_common.get_frame_annotation(current_time=current_time, scene=scene)
+    annotation = plotter_common.get_frame_annotation(
+        current_time=current_time, scene=scene
+    )
     x_max = axes.get_xlim()[1]
     y_max = axes.get_ylim()[1]
     z_max = axes.get_zlim()[1]
@@ -104,8 +106,12 @@ def draw_parameters(axes, scene: Scene, current_time):
 
 
 def plot_arrows(starts, vectors, axes):
-    prepared_starts, prepared_vectors = plotter_common.prepare_for_arrows(starts, vectors)
-    axes.quiver(*prepared_starts, *prepared_vectors, arrow_length_ratio=0.1, color="w", lw=0.1)
+    prepared_starts, prepared_vectors = plotter_common.prepare_for_arrows(
+        starts, vectors
+    )
+    axes.quiver(
+        *prepared_starts, *prepared_vectors, arrow_length_ratio=0.1, color="w", lw=0.1
+    )
 
 
 def draw_base_arrows(axes, base):
@@ -147,7 +153,9 @@ def plot_subframe(axes, scene: Scene, normalized_data: dict, t_scale):
         shifted_normalized_nodes = scene.normalized_nodes + shift
         args = dict(color="w", fontsize=4)
         axes.text(*(shift - 1), s=key, **args)  # zdir=None,
-        plot_mesh(nodes=shifted_normalized_nodes, mesh=scene, color="tab:blue", axes=axes)
+        plot_mesh(
+            nodes=shifted_normalized_nodes, mesh=scene, color="tab:blue", axes=axes
+        )
         plot_arrows(starts=shifted_normalized_nodes, vectors=data, axes=axes)
         shift += np.array([2.5, 0, 0])
 
@@ -160,7 +168,9 @@ def plot_subframe(axes, scene: Scene, normalized_data: dict, t_scale):
         )
 
 
-def plot_temperature(axes, nodes, scene: Scene, cbar_settings: plotter_common.ColorbarSettings):
+def plot_temperature(
+    axes, nodes, scene: Scene, cbar_settings: plotter_common.ColorbarSettings
+):
     axes.scatter(
         *(nodes.T),
         c=scene.t_old,

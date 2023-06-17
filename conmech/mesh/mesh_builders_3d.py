@@ -19,13 +19,17 @@ def read_mesh(path):
 
 
 def get_edges_from_surfaces(surfaces):
-    return np.array([[[s[0], s[1]], [s[1], s[2]], [s[2], s[0]]] for s in surfaces]).reshape(-1, 2)
+    return np.array(
+        [[[s[0], s[1]], [s[1], s[2]], [s[2], s[0]]] for s in surfaces]
+    ).reshape(-1, 2)
 
 
 def get_relative_ideal_edge_length(mesh_id):
     mesh = read_mesh(f"models/bunny/bun_zipper_res{mesh_id}.ply")
     nodes = mesh.points
-    diag_of_bbox = nph.euclidean_norm_numba(np.max(nodes, axis=0) - np.min(nodes, axis=0))
+    diag_of_bbox = nph.euclidean_norm_numba(
+        np.max(nodes, axis=0) - np.min(nodes, axis=0)
+    )
 
     surfaces = mesh.cells_dict["triangle"]
     edges = get_edges_from_surfaces(surfaces)
@@ -63,8 +67,12 @@ def get_pygmsh_polygon(mesh_prop: MeshProperties):
         )
         geom.extrude(poly, [0.0, 0.3, 1.0], num_layers=5)
 
-        geom.set_mesh_size_callback(mesh_builders_helpers.get_mesh_size_callback(mesh_prop))
-        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(geom, 3)
+        geom.set_mesh_size_callback(
+            mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        )
+        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(
+            geom, 3
+        )
     return nodes, elements
 
 
@@ -89,37 +97,52 @@ def get_pygmsh_twist(mesh_prop: MeshProperties):
             point_on_axis=[0, 0, 0],
             angle=np.pi / 3,
         )
-        geom.set_mesh_size_callback(mesh_builders_helpers.get_mesh_size_callback(mesh_prop))
-        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(geom, 3)
+        geom.set_mesh_size_callback(
+            mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        )
+        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(
+            geom, 3
+        )
     return nodes, elements
 
 
 def get_pygmsh_slide(mesh_prop):
     with pygmsh.geo.Geometry() as geom:
+        width = 0.5
+        depth = 1.0
+        thickness = 0.3  # 0.4
+        slope = 0.3
+
+        height = slope * depth
+        #  depth width height
         if "left" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-2.0, -1.0, -0.6],
-                    [2.0, -1.0, -0.6],
-                    [2.0, 1.0, 0.6],
-                    [-2.0, 1.0, 0.6],
+                    [-depth, -width, -height],
+                    [depth, -width, -height],
+                    [depth, width, height],
+                    [-depth, width, height],
                 ]
             )
         elif "right" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-4.0, -1.0, 0.6],
-                    [4.0, -1.0, 0.6],
-                    [4.0, 1.0, -0.6],
-                    [-4.0, 1.0, -0.6],
+                    [-depth, -width, height],
+                    [depth, -width, height],
+                    [depth, width, -height],
+                    [-depth, width, -height],
                 ]
             )
         else:
             raise ArgumentError
-        geom.extrude(poly, [0.0, 0.0, 0.4], num_layers=3)
+        geom.extrude(poly, [0.0, 0.0, thickness], num_layers=3)
 
-        geom.set_mesh_size_callback(mesh_builders_helpers.get_mesh_size_callback(mesh_prop))
-        nodes, elements = mesh_builders_helpers.get_nodes_and_elements(geom, dimension=3)
+        geom.set_mesh_size_callback(
+            mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        )
+        nodes, elements = mesh_builders_helpers.get_nodes_and_elements(
+            geom, dimension=3
+        )
     return nodes, elements
 
 
@@ -152,9 +175,9 @@ def get_pygmsh_bunny(mesh_prop, lifted=False):
 def get_pygmsh_armadillo():
     mesh = read_mesh("models/armadillo/armadillo.msh")
     scale = 0.6
-    nodes, elements = mesh_builders_helpers.normalize(mesh.points), mesh.cells_dict["tetra"].astype(
-        "long"
-    )
+    nodes, elements = mesh_builders_helpers.normalize(mesh.points), mesh.cells_dict[
+        "tetra"
+    ].astype("long")
     nodes += 0.5
     nodes[:, [1, 2]] = nodes[:, [2, 1]]
     nodes *= scale

@@ -51,7 +51,9 @@ def clean_acceleration(cleaned_a, a_correction):
 def get_mean_loss(acceleration, forces, mass_density, boundary_integral):
     # F = m * a
     return (boundary_integral == 0) * (
-        torch.norm(torch.mean(forces, axis=0) - torch.mean(mass_density * acceleration, axis=0))
+        torch.norm(
+            torch.mean(forces, axis=0) - torch.mean(mass_density * acceleration, axis=0)
+        )
         ** 2
     )
 
@@ -93,7 +95,8 @@ class GraphModelDynamicJax:
 
         train_dataloader = base_dataset.get_train_dataloader(self.train_dataset)
         all_valid_dataloaders = [
-            base_dataset.get_valid_dataloader(dataset) for dataset in self.all_validation_datasets
+            base_dataset.get_valid_dataloader(dataset)
+            for dataset in self.all_validation_datasets
         ]
 
         train_devices = jax.local_devices()
@@ -126,7 +129,10 @@ class GraphModelDynamicJax:
         # plot_weights(state.params['ProcessorLayer_1']['ForwardNet_1']['Dense_0']['bias'], "ProcessorBias1")
         ###
 
-        while self.config.max_epoch_number is None or self.epoch < self.config.max_epoch_number:
+        while (
+            self.config.max_epoch_number is None
+            or self.epoch < self.config.max_epoch_number
+        ):
             self.epoch += 1
 
             train_states = sync_batch_stats(train_states)
@@ -213,11 +219,15 @@ class GraphModelDynamicJax:
             scene.set_randomization(config)
         else:
             scene.unset_randomization()
-        scene.normalize_and_set_obstacles(scenario.linear_obstacles, scenario.mesh_obstacles)
+        scene.normalize_and_set_obstacles(
+            scenario.linear_obstacles, scenario.mesh_obstacles
+        )
         return scene
 
     @staticmethod
-    def plot_all_scenarios(state, print_scenarios: List[Scenario], config: TrainingConfig):
+    def plot_all_scenarios(
+        state, print_scenarios: List[Scenario], config: TrainingConfig
+    ):
         print("----PLOTTING----")
         start_time = time.time()
 
@@ -251,7 +261,9 @@ class GraphModelDynamicJax:
         raport_description: str,
         devices,
     ):
-        batch_tqdm = cmh.get_tqdm(dataloader, desc=tqdm_description, config=self.config, position=0)
+        batch_tqdm = cmh.get_tqdm(
+            dataloader, desc=tqdm_description, config=self.config, position=0
+        )
         if train:
             dataloader.sampler.set_epoch(self.epoch)
 
@@ -334,9 +346,9 @@ class GraphModelDynamicJax:
                 self.examples_seen,
             )
 
-        print(f"--Validating scenarios time: {int((time.time() - start_time) / 60)} min")
-
-    #####
+        print(
+            f"--Validating scenarios time: {int((time.time() - start_time) / 60)} min"
+        )
 
     def calculate_loss(self, states, batch_data: List[List[Data]], devices, train):
         devices_count = len(devices)
@@ -360,17 +372,21 @@ class GraphModelDynamicJax:
             sharded_args = jax.device_put_sharded(all_args, devices)
 
             if train:
-                states, losses = apply_model_train(states, sharded_args, sharded_targets)
+                states, losses = apply_model_train(
+                    states, sharded_args, sharded_targets
+                )
             else:
                 losses = apply_model_test(states, sharded_args, sharded_targets)
 
         else:
             other_target_data = [
-                data[d][1].normalized_new_displacement_skinning for d in range(devices_count)
+                data[d][1].normalized_new_displacement_skinning
+                for d in range(devices_count)
             ]
             sharded_other_targets = jax.device_put_sharded(other_target_data, devices)
             losses = apply_model_compare(
-                sharded_targets=sharded_targets, sharded_other_targets=sharded_other_targets
+                sharded_targets=sharded_targets,
+                sharded_other_targets=sharded_other_targets,
             )
 
         displacement_loss = jnp.mean(losses) / SCALE
@@ -432,15 +448,20 @@ def convert_to_jax(layer_list, target_data=None):
         layer.edge_index = thh.convert_tensor_to_jax(layer.edge_index)
 
     layer_sparse = layer_list[1]
-    layer_sparse.edge_index_to_down = thh.convert_tensor_to_jax(layer_sparse.edge_index_to_down)
-    layer_sparse.edge_attr_to_down = thh.convert_tensor_to_jax(layer_sparse.edge_attr_to_down)
+    layer_sparse.edge_index_to_down = thh.convert_tensor_to_jax(
+        layer_sparse.edge_index_to_down
+    )
+    layer_sparse.edge_attr_to_down = thh.convert_tensor_to_jax(
+        layer_sparse.edge_attr_to_down
+    )
     if target_data is None:
         return layer_list
     target_data.normalized_new_displacement = (
         thh.convert_tensor_to_jax(target_data.normalized_new_displacement) * SCALE
     )
     target_data.normalized_new_displacement_skinning = (
-        thh.convert_tensor_to_jax(target_data.normalized_new_displacement_skinning) * SCALE
+        thh.convert_tensor_to_jax(target_data.normalized_new_displacement_skinning)
+        * SCALE
     )
     return layer_list, target_data
 
@@ -466,17 +487,22 @@ def solve(
                 timer=timer,
             )
         else:
-            scene.exact_acceleration, scene.reduced.exact_acceleration = cmh.get_exact_acceleration(
-                scene=scene, path=dense_path
-            )
+            (
+                scene.exact_acceleration,
+                scene.reduced.exact_acceleration,
+            ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
 
         scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
     device_number = 0  # using GPU 0
 
     with timer["jax_features_constructon"]:
-        layers_list_0 = cmh.profile(lambda: scene.get_features_data(layer_number=0), baypass=True)
-        layers_list_1 = cmh.profile(lambda: scene.get_features_data(layer_number=1), baypass=True)
+        layers_list_0 = cmh.profile(
+            lambda: scene.get_features_data(layer_number=0), baypass=True
+        )
+        layers_list_1 = cmh.profile(
+            lambda: scene.get_features_data(layer_number=1), baypass=True
+        )
         layers_list = [layers_list_0, layers_list_1]
 
     with timer["jax_data_movement"]:
@@ -531,16 +557,22 @@ def prepare_input(layer_list):
 
 
 def create_train_state(rng, sample_args, learning_rate, statistics):
-    params, batch_stats = CustomGraphNetJax(statistics=statistics).get_params(sample_args, rng)
+    params, batch_stats = CustomGraphNetJax(statistics=statistics).get_params(
+        sample_args, rng
+    )
     # jax.tree_util.tree_map(lambda x: x.shape, params)  # Checking output shapes
 
     # optimizer = optax.adam(learning_rate=learning_rate)
     optimizer = optax.inject_hyperparams(optax.adam)(learning_rate=learning_rate)
 
     def a_fn(variables, args, train):
-        return CustomGraphNetJax().apply(variables, args, train, mutable=["batch_stats"])
+        return CustomGraphNetJax().apply(
+            variables, args, train, mutable=["batch_stats"]
+        )
 
-    return TrainState.create(apply_fn=a_fn, params=params, tx=optimizer, batch_stats=batch_stats)
+    return TrainState.create(
+        apply_fn=a_fn, params=params, tx=optimizer, batch_stats=batch_stats
+    )
 
 
 def get_apply_net(state):
@@ -565,7 +597,9 @@ def RMSE(predicted, exact):
 def get_loss_function(states, sharded_args, sharded_targets, train):
     def loss_function(params):
         variables = {"params": params, "batch_stats": states.batch_stats}
-        sharded_net_result, non_trainable_params = states.apply_fn(variables, sharded_args, train)
+        sharded_net_result, non_trainable_params = states.apply_fn(
+            variables, sharded_args, train
+        )
         losses = RMSE(sharded_net_result, sharded_targets)
         new_batch_stats = non_trainable_params["batch_stats"]
         ###
@@ -601,7 +635,9 @@ def apply_model_test(states, sharded_args, sharded_targets):
 def apply_model_train(states, sharded_args, sharded_targets):
     loss_fn = get_loss_function(states, sharded_args, sharded_targets, train=True)
 
-    (losses, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(states.params)
+    (losses, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
+        states.params
+    )
     grads_pmean = jax.lax.pmean(grads, axis_name="models")
     states = states.apply_gradients(grads=grads_pmean, batch_stats=new_batch_stats)
     return states, losses

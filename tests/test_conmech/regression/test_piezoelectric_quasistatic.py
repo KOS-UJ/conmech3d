@@ -65,7 +65,9 @@ def generate_test_suits():
                 [[-0.59, 0.0, 0.0], [0.0, 1.14, 0.0], [0.0, 0.0, 0.0]],
             ]
         )
-        permittivity: ... = np.array([[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]])
+        permittivity: ... = np.array(
+            [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
+        )
 
         @staticmethod
         def inner_forces(x):
@@ -194,8 +196,12 @@ def generate_test_suits():
         return np.array([0, -0.2])
 
     setup_0_m02_p_0.inner_forces = inner_forces
-    expected_displacement_vector_0_m02_p_0 = [-v for v in expected_displacement_vector_0_02_p_0]
-    expected_temperature_vector_0_m02_p_0 = [-v for v in expected_temperature_vector_0_02_p_0]
+    expected_displacement_vector_0_m02_p_0 = [
+        -v for v in expected_displacement_vector_0_02_p_0
+    ]
+    expected_temperature_vector_0_m02_p_0 = [
+        -v for v in expected_temperature_vector_0_02_p_0
+    ]
     test_suites.append(
         (
             setup_0_m02_p_0,
@@ -222,7 +228,9 @@ def generate_test_suits():
                 [[-0.59, 0.0, 0.0], [0.0, 1.14, 0.0], [0.0, 0.0, 0.0]],
             ]
         )
-        permittivity: ... = np.array([[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]])
+        permittivity: ... = np.array(
+            [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
+        )
 
         @staticmethod
         def inner_forces(x):
@@ -291,7 +299,10 @@ def generate_test_suits():
     generate_test_suits(),
 )
 def test_global_optimization_solver(
-    solving_method, setup, expected_displacement_vector, expected_electric_potential_vector
+    solving_method,
+    setup,
+    expected_displacement_vector,
+    expected_electric_potential_vector,
 ):
     runner = PiezoelectricQuasistaticSolver(setup, solving_method)
     results = runner.solve(
@@ -304,7 +315,9 @@ def test_global_optimization_solver(
     std_ids = standard_boundary_nodes(runner.body.initial_nodes, runner.body.elements)
     displacement = results[-1].body.initial_nodes[:] - results[-1].displaced_nodes[:]
     electric_potential = np.zeros(len(results[-1].body.initial_nodes))
-    electric_potential[: len(results[-1].electric_potential)] = results[-1].electric_potential
+    electric_potential[: len(results[-1].electric_potential)] = results[
+        -1
+    ].electric_potential
 
     # print result
     np.set_printoptions(precision=8, suppress=True)
@@ -316,5 +329,7 @@ def test_global_optimization_solver(
     )
     precision = 2 if solving_method == "global optimization" else 1  # TODO #94
     np.testing.assert_array_almost_equal(
-        electric_potential[std_ids], expected_electric_potential_vector, decimal=precision
+        electric_potential[std_ids],
+        expected_electric_potential_vector,
+        decimal=precision,
     )

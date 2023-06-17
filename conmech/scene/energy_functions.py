@@ -12,7 +12,8 @@ from conmech.helpers.config import SimulationConfig
 
 def _get_penetration_positive(displacement_step, normals, initial_penetration):
     projection = (
-        nph.elementwise_dot(displacement_step, normals, keepdims=True) + initial_penetration
+        nph.elementwise_dot(displacement_step, normals, keepdims=True)
+        + initial_penetration
     )
     return (projection > 0) * projection
 
@@ -26,10 +27,16 @@ def _obstacle_resistance_normal_scalar(penetration_norm, hardness):
 
 
 def _obstacle_resistance_potential_tangential(
-    initial_penetration, tangential_velocity, friction, time_step, use_nonconvex_friction_law
+    initial_penetration,
+    tangential_velocity,
+    friction,
+    time_step,
+    use_nonconvex_friction_law,
 ):
     if use_nonconvex_friction_law:
-        friction_law = jnp.log(nph.euclidean_norm(tangential_velocity, keepdims=True) + 1.0)
+        friction_law = jnp.log(
+            nph.euclidean_norm(tangential_velocity, keepdims=True) + 1.0
+        )
     else:
         friction_law = nph.euclidean_norm(tangential_velocity, keepdims=True)
     return (initial_penetration > 0) * friction * friction_law * (1.0 / time_step)
@@ -82,7 +89,8 @@ SELF_COLLISION_SCALAR = 10.0
 
 
 def _get_constant_boundary_integral(
-    args: EnergyObstacleArguments, use_nonconvex_friction_law: bool  # , with_self_collisions: bool
+    args: EnergyObstacleArguments,
+    use_nonconvex_friction_law: bool,  # , with_self_collisions: bool
 ):
     boundary_v_new = args.boundary_velocity_old
     boundary_displacement_step = args.time_step * boundary_v_new
@@ -288,7 +296,9 @@ def _energy_vector(value_vector, lhs, rhs):
 
 
 def _energy_obstacle_free(
-    acceleration_vector, args: EnergyObstacleArguments, static_args: StaticEnergyArguments
+    acceleration_vector,
+    args: EnergyObstacleArguments,
+    static_args: StaticEnergyArguments,
 ):
     dimension = args.base_displacement.shape[1]
 
@@ -306,7 +316,9 @@ def _energy_obstacle_free(
 
 
 def _energy_obstacle_colliding(
-    acceleration_vector, args: EnergyObstacleArguments, static_args: StaticEnergyArguments
+    acceleration_vector,
+    args: EnergyObstacleArguments,
+    static_args: StaticEnergyArguments,
 ):
     # TODO: Repeat if collision
     main_energy = _energy_obstacle_free(
@@ -355,10 +367,12 @@ class EnergyFunctions:
             use_constant_contact_integral=simulation_config.use_constant_contact_integral,
         )
 
-        self._energy_obstacle_free = lambda acceleration_vector, args: _energy_obstacle_free(
-            acceleration_vector=acceleration_vector,
-            args=args,
-            static_args=static_args,
+        self._energy_obstacle_free = (
+            lambda acceleration_vector, args: _energy_obstacle_free(
+                acceleration_vector=acceleration_vector,
+                args=args,
+                static_args=static_args,
+            )
         )
 
         self._energy_obstacle_colliding = (
@@ -382,7 +396,9 @@ class EnergyFunctions:
 
         self.compute_displacement_energy = compute_displacement_energy
 
-        def compute_velocity_energy(velocity, dx_big_jax, element_initial_volume, body_prop):
+        def compute_velocity_energy(
+            velocity, dx_big_jax, element_initial_volume, body_prop
+        ):
             return _compute_velocity_energy(
                 velocity=velocity,
                 dx_big_jax=dx_big_jax,

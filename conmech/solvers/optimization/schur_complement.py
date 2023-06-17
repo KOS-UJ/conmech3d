@@ -65,7 +65,10 @@ class SchurComplement(Optimization):
             else:
                 blocks = [
                     [
-                        matrix[get_slice(indices_height, row), get_slice(indices_width, col)]
+                        matrix[
+                            get_slice(indices_height, row),
+                            get_slice(indices_width, col),
+                        ]
                         for col in range(dimension)
                     ]
                     for row in range(dimension)
@@ -116,9 +119,17 @@ class SchurComplement(Optimization):
         #     contact_x_contact.todense() - contact_x_free @ free_x_free_inverted @ free_x_contact
         # )
         free_x_free_inverted = np.linalg.inv(free_x_free)
-        lhs_boundary = contact_x_contact - contact_x_free @ (free_x_free_inverted @ free_x_contact)
+        lhs_boundary = contact_x_contact - contact_x_free @ (
+            free_x_free_inverted @ free_x_contact
+        )
 
-        return lhs_boundary, free_x_contact, contact_x_free, free_x_free, free_x_free_inverted
+        return (
+            lhs_boundary,
+            free_x_contact,
+            contact_x_free,
+            free_x_free,
+            free_x_free_inverted,
+        )
 
     @staticmethod
     def calculate_schur_complement_vector(
@@ -132,7 +143,9 @@ class SchurComplement(Optimization):
         vector_split = nph.unstack(vector, dimension)
         vector_contact = nph.stack_column(vector_split[contact_indices, :])
         vector_free = nph.stack_column(vector_split[free_indices, :])
-        vector_boundary = vector_contact - (contact_x_free @ (free_x_free_inverted @ vector_free))
+        vector_boundary = vector_contact - (
+            contact_x_free @ (free_x_free_inverted @ vector_free)
+        )
         # s1 = jxh.solve_linear_jax(matrix=free_x_free, vector=vector_free)
         # vector_boundary = vector_contact - nph.stack_column(contact_x_free @ s1)
         return vector_boundary, vector_free
@@ -161,7 +174,9 @@ class SchurComplement(Optimization):
         else:
             node_forces_T = node_forces.T
 
-        return np.array(node_forces_T, dtype=np.float64), np.array(forces_free, dtype=np.float64)
+        return np.array(node_forces_T, dtype=np.float64), np.array(
+            forces_free, dtype=np.float64
+        )
 
     def __str__(self):
         return "schur"
@@ -209,7 +224,9 @@ class SchurComplement(Optimization):
         result = self.free_x_free_inverted @ _result
         return result
 
-    def merge(self, solution_contact: np.ndarray, solution_free: np.ndarray) -> np.ndarray:
+    def merge(
+        self, solution_contact: np.ndarray, solution_free: np.ndarray
+    ) -> np.ndarray:
         if self.statement.dimension != 2:
             _result = np.concatenate((solution_contact, solution_free))
             result = np.squeeze(np.asarray(_result))

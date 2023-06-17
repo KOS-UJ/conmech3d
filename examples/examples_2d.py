@@ -41,7 +41,9 @@ def main(mesh_density=20, final_time=5, plot_animation=True):  # 40
             np.array([[[0.0, 1.0]], [[0.0, 0.0]]]),
             ObstacleProperties(hardness=100.0, friction=0.5),
         ),
-        Obstacle(np.array([[[0.0, 1.0]], [[0.0, 0.0]]]), scenarios.default_obstacle_prop),
+        Obstacle(
+            np.array([[[0.0, 1.0]], [[0.0, 0.0]]]), scenarios.default_obstacle_prop
+        ),
     ]
     all_scenarios = [
         # scenarios.polygon_mesh_obstacles(

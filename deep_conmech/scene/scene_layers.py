@@ -142,9 +142,13 @@ class SceneLayers(Scene):
             #     )
             # )
 
-        from_base = self.get_link(from_mesh=self, to_mesh=reduced_scene, with_weights=True)
+        from_base = self.get_link(
+            from_mesh=self, to_mesh=reduced_scene, with_weights=True
+        )
         # self.project_sparse_nodes(from_base, reduced_scene) #TODO: reintroduce
-        to_base = self.get_link(from_mesh=reduced_scene, to_mesh=self, with_weights=True)  ### False
+        to_base = self.get_link(
+            from_mesh=reduced_scene, to_mesh=self, with_weights=True
+        )  ### False
 
         mesh_layer_data = AllMeshLayerLinkData(
             mesh=reduced_scene,
@@ -201,10 +205,14 @@ class SceneLayers(Scene):
         self.reduced.normalize_and_set_obstacles(obstacles_unnormalized, all_mesh_prop)
 
     def lift_data(self, data):
-        return self.approximate_boundary_or_all_from_base(layer_number=1, base_values=data)
+        return self.approximate_boundary_or_all_from_base(
+            layer_number=1, base_values=data
+        )
 
     def lower_data(self, data):
-        return self.approximate_boundary_or_all_to_base(layer_number=1, reduced_values=data)
+        return self.approximate_boundary_or_all_to_base(
+            layer_number=1, reduced_values=data
+        )
 
     def lift_acceleration_from_position(self, acceleration):
         new_displacement = self.to_displacement(acceleration)
@@ -213,7 +221,9 @@ class SceneLayers(Scene):
         moved_reduced_nodes_new = self.lift_data(moved_nodes_new)
 
         new_reduced_displacement = moved_reduced_nodes_new - self.reduced.initial_nodes
-        reduced_exact_acceleration = self.reduced.from_displacement(new_reduced_displacement)
+        reduced_exact_acceleration = self.reduced.from_displacement(
+            new_reduced_displacement
+        )
         return reduced_exact_acceleration
 
     def lower_displacement_from_position(self, new_reduced_displacement):
@@ -224,7 +234,9 @@ class SceneLayers(Scene):
 
     def lower_acceleration_from_position(self, reduced_acceleration):
         new_reduced_displacement = self.reduced.to_displacement(reduced_acceleration)
-        new_displacement = self.lower_displacement_from_position(new_reduced_displacement)
+        new_displacement = self.lower_displacement_from_position(
+            new_reduced_displacement
+        )
         acceleration_from_displacement = self.from_displacement(new_displacement)
         return acceleration_from_displacement
 
@@ -240,7 +252,9 @@ class SceneLayers(Scene):
 
     def reorient_to_reduced(self, exact_acceleration):
         base_displacement = self.to_displacement(exact_acceleration)
-        reduced_displacement_new = self.reduced.to_displacement(self.reduced.exact_acceleration)
+        reduced_displacement_new = self.reduced.to_displacement(
+            self.reduced.exact_acceleration
+        )
         base = self.reduced.get_rotation(reduced_displacement_new)
         position = np.mean(reduced_displacement_new, axis=0)
 
@@ -252,7 +266,9 @@ class SceneLayers(Scene):
     def recenter_by_reduced(
         self, new_displacement, reduced_exact_acceleration
     ):  # TODO: Merge with reorient_to_reduced
-        reduced_displacement_new = self.reduced.to_displacement(reduced_exact_acceleration)
+        reduced_displacement_new = self.reduced.to_displacement(
+            reduced_exact_acceleration
+        )
         base = self.reduced.get_rotation(reduced_displacement_new)
         position = np.mean(reduced_displacement_new, axis=0)
         recentered_new_displacement = self.get_displacement(
@@ -261,7 +277,9 @@ class SceneLayers(Scene):
         return recentered_new_displacement
 
     def recenter_reduced_mesh(self):
-        displacement = self.reduced.get_displacement(base=self.moved_base, position=self.position)
+        displacement = self.reduced.get_displacement(
+            base=self.moved_base, position=self.position
+        )
         self.reduced.set_displacement_old(displacement)
 
     def update_reduced(self):
@@ -274,7 +292,9 @@ class SceneLayers(Scene):
         self.reduced.lifted_acceleration = None
         return
 
-    def approximate_boundary_or_all_from_base(self, layer_number: int, base_values: np.ndarray):
+    def approximate_boundary_or_all_from_base(
+        self, layer_number: int, base_values: np.ndarray
+    ):
         if base_values is None or layer_number == 0:
             return base_values
 
@@ -294,10 +314,14 @@ class SceneLayers(Scene):
             raise ArgumentError
 
         return interpolation_helpers.approximate_internal(
-            base_values=base_values, closest_nodes=closest_nodes, closest_weights=closest_weights
+            base_values=base_values,
+            closest_nodes=closest_nodes,
+            closest_weights=closest_weights,
         )
 
-    def approximate_boundary_or_all_to_base(self, layer_number: int, reduced_values: np.ndarray):
+    def approximate_boundary_or_all_to_base(
+        self, layer_number: int, reduced_values: np.ndarray
+    ):
         if reduced_values is None or layer_number == 0:
             return reduced_values
 
@@ -318,5 +342,7 @@ class SceneLayers(Scene):
             raise ArgumentError
 
         return interpolation_helpers.approximate_internal(
-            base_values=reduced_values, closest_nodes=closest_nodes, closest_weights=closest_weights
+            base_values=reduced_values,
+            closest_nodes=closest_nodes,
+            closest_weights=closest_weights,
         )

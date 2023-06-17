@@ -92,7 +92,9 @@ def get_dynamics(
     result.volume_at_nodes = edges_features_matrix[0]
     U = edges_features_matrix[1]
 
-    result.acceleration_operator = factory.calculate_acceleration(U, body_prop.mass_density)
+    result.acceleration_operator = factory.calculate_acceleration(
+        U, body_prop.mass_density
+    )
 
     # return result
 
@@ -133,7 +135,9 @@ def get_dynamics(
         result.thermal_conductivity = None
 
     if isinstance(body_prop, PiezoelectricBodyProperties):
-        result.piezoelectricity = factory.get_piezoelectric_tensor(W, body_prop.piezoelectricity)
+        result.piezoelectricity = factory.get_piezoelectric_tensor(
+            W, body_prop.piezoelectricity
+        )
         result.permittivity = factory.get_permittivity_tensor(W, body_prop.permittivity)
     else:
         result.piezoelectricity = None

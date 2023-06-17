@@ -33,7 +33,9 @@ def print_jax_configuration():
 
 
 def get_used_memory_gb():
-    return psutil.Process(os.getpid()).memory_info().rss / 1024**3  # (b -> kb -> mb -> gb)
+    return (
+        psutil.Process(os.getpid()).memory_info().rss / 1024**3
+    )  # (b -> kb -> mb -> gb)
 
 
 def get_timestamp(config: Config):
@@ -96,7 +98,9 @@ def find_files_by_name(directory, name):
 
 
 def get_base_for_comarison():
-    all_paths = glob("output/**/scenarios/*skinning_backwards*.scenes_comparer", recursive=True)
+    all_paths = glob(
+        "output/**/scenarios/*skinning_backwards*.scenes_comparer", recursive=True
+    )
     assert len(all_paths) == 1
     return all_paths[0]
 
@@ -144,7 +148,9 @@ def get_exact_acceleration(scene, path):
     exact_acceleration = normal[scene.step]["exact_acceleration"]
     scene.step += 1  # TODO: Move to iterate self
 
-    reduced_exact_acceleration = scene.lift_acceleration_from_position(exact_acceleration)
+    reduced_exact_acceleration = scene.lift_acceleration_from_position(
+        exact_acceleration
+    )
     return exact_acceleration, reduced_exact_acceleration
 
 

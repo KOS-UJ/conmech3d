@@ -60,8 +60,12 @@ def get_pygmsh_elements_and_nodes(mesh_prop):
         else:
             raise ArgumentError
         # TODO: #65: CHECK IF DATA NORMALIZED TO 1
-        geom.set_mesh_size_callback(mesh_builders_helpers.get_mesh_size_callback(mesh_prop))
-        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(geom, 2)
+        geom.set_mesh_size_callback(
+            mesh_builders_helpers.get_mesh_size_callback(mesh_prop)
+        )
+        nodes, elements = mesh_builders_helpers.get_normalized_nodes_and_elements(
+            geom, 2
+        )
         # boundary_surfaces = geom_mesh.cells[0].data.astype("long").copy()
 
     return nodes, elements

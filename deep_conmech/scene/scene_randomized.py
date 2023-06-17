@@ -139,4 +139,6 @@ class SceneRandomized(SceneLayers):
 
     @property
     def input_displacement_old(self):  # normalized_randomized_displacement_old
-        return super().input_displacement_old + self.normalized_displacement_randomization
+        return (
+            super().input_displacement_old + self.normalized_displacement_randomization
+        )

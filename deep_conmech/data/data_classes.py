@@ -11,7 +11,9 @@ class MeshLayerData(Data):
         if key == "closest_nodes_to_down":
             return torch.tensor([self.layer_nodes_count])
         if key == "edge_index_to_down":
-            return torch.tensor([[self.layer_nodes_count], [self.down_layer_nodes_count]])
+            return torch.tensor(
+                [[self.layer_nodes_count], [self.down_layer_nodes_count]]
+            )
         else:
             return super().__inc__(key, value, *args, **kwargs)
 

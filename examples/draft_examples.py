@@ -169,7 +169,9 @@ def main():
             forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
             obstacle=Obstacle(
                 geometry=None,  # np.array([[[0.7, 0.0, 1.0]], [[1.0, 1.0, 0.0]]]),
-                properties=ObstacleProperties(hardness=100.0, friction=2.0),  # friction=0.1
+                properties=ObstacleProperties(
+                    hardness=100.0, friction=2.0
+                ),  # friction=0.1
                 all_mesh=[
                     MeshProperties(
                         dimension=3,

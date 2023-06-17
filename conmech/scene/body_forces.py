@@ -70,8 +70,12 @@ class BodyForces(Dynamics):
     def set_permanent_forces_by_functions(
         self, inner_forces_function: Callable, outer_forces_function: Callable
     ):
-        self.inner_forces = np.array([inner_forces_function(p) for p in self.moved_nodes])
-        self.outer_forces = np.array([outer_forces_function(p) for p in self.moved_nodes])
+        self.inner_forces = np.array(
+            [inner_forces_function(p) for p in self.moved_nodes]
+        )
+        self.outer_forces = np.array(
+            [outer_forces_function(p) for p in self.moved_nodes]
+        )
 
     def prepare(self, inner_forces: np.ndarray):
         super().prepare(inner_forces)
@@ -100,7 +104,8 @@ class BodyForces(Dynamics):
 
     def get_normalized_integrated_outer_forces(self):
         neumann_surfaces = jax.jit(
-            get_surface_per_boundary_node_jax, static_argnames=["considered_nodes_count"]
+            get_surface_per_boundary_node_jax,
+            static_argnames=["considered_nodes_count"],
         )(
             moved_nodes=self.moved_nodes,  # normalized
             boundary_surfaces=self.neumann_boundary,
@@ -109,13 +114,17 @@ class BodyForces(Dynamics):
         return neumann_surfaces * self.normalized_outer_forces
 
     def get_integrated_forces_column_np(self):
-        integrated_inner_forces = self.matrices.volume_at_nodes @ self.normalized_inner_forces
+        integrated_inner_forces = (
+            self.matrices.volume_at_nodes @ self.normalized_inner_forces
+        )
         integrated_outer_forces = self.get_normalized_integrated_outer_forces()
         integrated_forces = integrated_inner_forces + integrated_outer_forces
         return nph.stack_column(integrated_forces)  # [self.independent_indices, :])
 
     def get_integrated_forces_vector_np(self):
-        return np.array(self.get_integrated_forces_column_np().reshape(-1), dtype=np.float64)
+        return np.array(
+            self.get_integrated_forces_column_np().reshape(-1), dtype=np.float64
+        )
 
     def get_normalized_integrated_forces_column_for_jax(self, args):
         integrated_forces = jax.jit(get_integrated_forces_jax)(
@@ -126,7 +135,8 @@ class BodyForces(Dynamics):
 
         if self.simulation_config.use_constant_contact_integral:
             rhs_contact = jax.jit(
-                _get_constant_boundary_integral, static_argnames="use_nonconvex_friction_law"
+                _get_constant_boundary_integral,
+                static_argnames="use_nonconvex_friction_law",
             )(
                 args=args,
                 use_nonconvex_friction_law=self.simulation_config.use_nonconvex_friction_law,

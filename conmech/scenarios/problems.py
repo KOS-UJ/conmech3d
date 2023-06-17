@@ -36,7 +36,9 @@ class Problem:
     grid_height: float
     boundaries: BoundariesDescription
 
-    elements_number: Union[Tuple[int, int], Tuple[int, int, int]]  # number of triangles per aside
+    elements_number: Union[
+        Tuple[int, int], Tuple[int, int, int]
+    ]  # number of triangles per aside
 
     mu_coef: float
     la_coef: float

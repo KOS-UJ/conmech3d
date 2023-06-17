@@ -158,7 +158,9 @@ def draw_obstacles(obstacle_nodes, obstacle_normals, position, color, axes):
     if len(obstacle_nodes) == 0:
         return
 
-    obstacles_tangient = np.hstack((-obstacle_normals[:, 1, None], obstacle_normals[:, 0, None]))
+    obstacles_tangient = np.hstack(
+        (-obstacle_normals[:, 1, None], obstacle_normals[:, 0, None])
+    )
     for i, obstacle_node in enumerate(obstacle_nodes):
         bias = obstacle_node + position
         axes.arrow(
@@ -180,7 +182,9 @@ def draw_obstacles(obstacle_nodes, obstacle_normals, position, color, axes):
 
 
 def plot_arrows(starts, vectors, axes):
-    prepared_starts, prepared_vectors = plotter_common.prepare_for_arrows(starts, vectors)
+    prepared_starts, prepared_vectors = plotter_common.prepare_for_arrows(
+        starts, vectors
+    )
     axes.quiver(
         *prepared_starts,
         *prepared_vectors,
@@ -199,7 +203,11 @@ def draw_initial(scene: Scene, position, axes):
 
 def draw_main_obstacles(scene: Scene, axes):
     draw_obstacles(
-        scene.linear_obstacle_nodes, scene.linear_obstacle_normals, [0, 0], "orange", axes
+        scene.linear_obstacle_nodes,
+        scene.linear_obstacle_normals,
+        [0, 0],
+        "orange",
+        axes,
     )
 
 
@@ -242,7 +250,11 @@ def draw_boundary_v_tangential(scene: Scene, position, axes):
 
 def draw_boundary_resistance_normal(scene: Scene, position, axes):
     draw_moved_body("RES_N", scene, position, axes)
-    data = scene.get_normalized_boundary_normals_jax() * scene.get_resistance_normal() / 100
+    data = (
+        scene.get_normalized_boundary_normals_jax()
+        * scene.get_resistance_normal()
+        / 100
+    )
     plot_arrows(
         scene.normalized_boundary_nodes + position,
         np.array(data),
@@ -252,7 +264,11 @@ def draw_boundary_resistance_normal(scene: Scene, position, axes):
 
 def draw_boundary_resistance_tangential(scene: Scene, position, axes):
     draw_moved_body("RES_T", scene, position, axes)
-    data = scene.get_normalized_boundary_normals_jax() * scene.get_resistance_tangential() / 100
+    data = (
+        scene.get_normalized_boundary_normals_jax()
+        * scene.get_resistance_tangential()
+        / 100
+    )
     plot_arrows(
         scene.normalized_boundary_nodes + position,
         np.array(data),
@@ -355,7 +371,9 @@ def draw_all_sparse(scene: Scene, position, axes):
             layer_number=i, base_values=scene.normalized_inner_forces
         )
 
-        triplot(mesh.initial_nodes + position, mesh.elements, color="tab:orange", axes=axes)
+        triplot(
+            mesh.initial_nodes + position, mesh.elements, color="tab:orange", axes=axes
+        )
         plot_arrows(mesh.initial_nodes + position, layer_inner_forces, axes)
         position[0] += 2.5
 
@@ -364,8 +382,12 @@ def draw_all_sparse(scene: Scene, position, axes):
             layer_number=i, base_values=boundary_penetration
         )
 
-        triplot(mesh.initial_nodes + position, mesh.elements, color="tab:blue", axes=axes)
-        plot_arrows(mesh.initial_boundary_nodes + position, new_boundary_penetration, axes)
+        triplot(
+            mesh.initial_nodes + position, mesh.elements, color="tab:blue", axes=axes
+        )
+        plot_arrows(
+            mesh.initial_boundary_nodes + position, new_boundary_penetration, axes
+        )
         position[0] += 2.5
 
 
@@ -383,7 +405,9 @@ def draw_parameters(current_time, scene: Scene, scale, axes):
         fontsize=5,
     )
 
-    annotation = plotter_common.get_frame_annotation(current_time=current_time, scene=scene)
+    annotation = plotter_common.get_frame_annotation(
+        current_time=current_time, scene=scene
+    )
     axes.text(x_max - 4.0 * scale, y_max - 2.0 * scale, s=annotation, **args)
 
 

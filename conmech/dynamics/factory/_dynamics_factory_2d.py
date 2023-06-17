@@ -51,7 +51,10 @@ def get_edges_features_dictionary_numba(elements, nodes):
 
                 v = [INT_PH * j_d_phi for j_d_phi in j_d_phi_vec]
 
-                w = [[i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec] for i_d_phi in i_d_phi_vec]
+                w = [
+                    [i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec]
+                    for i_d_phi in i_d_phi_vec
+                ]
 
                 result = element_volume * np.array(
                     [volume_at_nodes, u, v[0], v[1], w[0][0], w[0][1], w[1][0], w[1][1]]
@@ -101,9 +104,14 @@ def get_edges_features_matrix_numba(elements, nodes):
 
                 v = [INT_PH * j_d_phi for j_d_phi in j_d_phi_vec]
 
-                w = [[i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec] for i_d_phi in i_d_phi_vec]
+                w = [
+                    [i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec]
+                    for i_d_phi in i_d_phi_vec
+                ]
 
-                edges_features_matrix[:, element[i], element[j]] += element_volume * np.array(
+                edges_features_matrix[
+                    :, element[i], element[j]
+                ] += element_volume * np.array(
                     [volume_at_nodes, u, v[0], v[1], w[0][0], w[0][1], w[1][0], w[1][1]]
                 )
 

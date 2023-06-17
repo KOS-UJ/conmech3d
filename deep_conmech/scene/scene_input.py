@@ -32,7 +32,9 @@ def get_indices_from_graph_sizes_numba(graph_sizes: List[int]):
 
 def prepare_node_data(data: np.ndarray, nodes_count, add_norm=False):
     approximated_data = jnp.array(data)
-    result = jxh.complete_data_with_zeros(data=approximated_data, nodes_count=nodes_count)
+    result = jxh.complete_data_with_zeros(
+        data=approximated_data, nodes_count=nodes_count
+    )
     if add_norm:
         result = jxh.append_euclidean_norm(result)
     return result
@@ -109,7 +111,9 @@ class SceneInput(SceneRandomized):
 
         return np.hstack(
             (
-                get_column(self.reduced.input_initial_nodes, self.input_initial_nodes),  # cached
+                get_column(
+                    self.reduced.input_initial_nodes, self.input_initial_nodes
+                ),  # cached
                 # get_column(
                 #     displacement_old_sparse,
                 #     displacement_old_dense,
@@ -124,7 +128,9 @@ class SceneInput(SceneRandomized):
         scene = self.reduced if reduced else self
 
         def prepare_nodes(data):
-            return jax.jit(prepare_node_data, static_argnames=["add_norm", "nodes_count"])(
+            return jax.jit(
+                prepare_node_data, static_argnames=["add_norm", "nodes_count"]
+            )(
                 data=data,
                 add_norm=True,
                 nodes_count=scene.nodes_count,
@@ -146,7 +152,9 @@ class SceneInput(SceneRandomized):
         # )
         # input_forces = prepare_nodes(scene.input_forces)
         if reduced:
-            new_displacement = prepare_nodes(self.reduced.norm_by_reduced_lifted_new_displacement)
+            new_displacement = prepare_nodes(
+                self.reduced.norm_by_reduced_lifted_new_displacement
+            )
             # new_displacement = prepare_nodes(
             #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
             # )
@@ -224,7 +232,9 @@ class SceneInput(SceneRandomized):
             edge_number=torch.tensor([scene.edges_number]),
             layer_number=torch.tensor([layer_number]),
             pos=thh.to_torch_set_precision(scene.normalized_initial_nodes),
-            x=thh.convert_jax_to_tensor_set_precision(self.get_nodes_data(reduced=reduced), to_cpu=to_cpu),
+            x=thh.convert_jax_to_tensor_set_precision(
+                self.get_nodes_data(reduced=reduced), to_cpu=to_cpu
+            ),
             # pin_memory=True,
             # num_workers=1
         )
@@ -243,7 +253,8 @@ class SceneInput(SceneRandomized):
 
         data.edge_index = thh.get_contiguous_torch(scene.mesh.directional_edges)
         data.edge_attr = thh.convert_jax_to_tensor_set_precision(
-            self.get_edges_data(scene.mesh.directional_edges, reduced=reduced), to_cpu=to_cpu
+            self.get_edges_data(scene.mesh.directional_edges, reduced=reduced),
+            to_cpu=to_cpu,
         )
         _ = """
         transform = T.Compose(
@@ -270,7 +281,9 @@ class SceneInput(SceneRandomized):
             self.norm_by_reduced_lifted_new_displacement
         )  # lower and rotate
 
-        target_data.last_displacement_step = thh.to_double(self.get_last_displacement_step())
+        target_data.last_displacement_step = thh.to_double(
+            self.get_last_displacement_step()
+        )
         ###
 
         skinning_acceleration = np.array(
@@ -339,7 +352,10 @@ class SceneInput(SceneRandomized):
     @staticmethod
     def get_edges_data_description(dim):
         desc = []
-        for attr in ["initial_nodes", "displacement_old"]:  # , "velocity_old", "forces"]:
+        for attr in [
+            "initial_nodes",
+            "displacement_old",
+        ]:  # , "velocity_old", "forces"]:
             for i in range(dim):
                 desc.append(f"{attr}_{i}")
             desc.append(f"{attr}_norm")

@@ -61,7 +61,9 @@ def get_t_data(t_scale: np.ndarray) -> ColorbarSettings:
     lim_big = 10
 
     if t_scale[0] > -lim_small and t_scale[1] < lim_small:
-        return ColorbarSettings(vmin=-lim_small, vmax=lim_small, cmap=plt.cm.cool)  # coolwarm
+        return ColorbarSettings(
+            vmin=-lim_small, vmax=lim_small, cmap=plt.cm.cool
+        )  # coolwarm
     if t_scale[0] > -lim_medium and t_scale[1] < lim_medium:
         return ColorbarSettings(vmin=-lim_medium, vmax=lim_medium, cmap=plt.cm.coolwarm)
     return ColorbarSettings(vmin=-lim_big, vmax=lim_big, cmap=plt.cm.magma)
@@ -106,7 +108,9 @@ def prepare_for_arrows(starts, vectors):
 
 
 def plt_save(path, extension):
-    plt.savefig(path, **savefig_args, format=extension, dpi=DPI)  # , bbox_inches="tight"
+    plt.savefig(
+        path, **savefig_args, format=extension, dpi=DPI
+    )  # , bbox_inches="tight"
     plt.close()
 
 
@@ -179,7 +183,13 @@ def plot_animation(
         ani = animation.FuncAnimation(
             fig, animate, fargs=(args,), frames=plot_config.plot_scenes_count
         )
-        ani.save(plot_config.save_path, writer=None, fps=fps, dpi=DPI, savefig_kwargs=savefig_args)
+        ani.save(
+            plot_config.save_path,
+            writer=None,
+            fps=fps,
+            dpi=DPI,
+            savefig_kwargs=savefig_args,
+        )
     plt.close()
 
 

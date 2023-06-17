@@ -81,7 +81,10 @@ class DynamicsConfiguration:
 def _get_jac(value, dx_big_jax):
     dimension = value.shape[1]
     result0 = (
-        (dx_big_jax @ value).reshape(dimension, -1, dimension).swapaxes(0, 1).transpose((0, 2, 1))
+        (dx_big_jax @ value)
+        .reshape(dimension, -1, dimension)
+        .swapaxes(0, 1)
+        .transpose((0, 2, 1))
     )
     return result0
 
@@ -113,13 +116,18 @@ def _get_rotation_jax(displacement, dx_big):
         norm = jnp.linalg.norm(state.rotation - rotation_new)
         iteration = state.iteration + 1
         return RotationState(
-            rotation=rotation_new, norm=norm, iteration=iteration, success=iteration < max_iter
+            rotation=rotation_new,
+            norm=norm,
+            iteration=iteration,
+            success=iteration < max_iter,
         )
 
     state = RotationState(rotation=deform_grad, norm=0, iteration=0, success=True)
     # state = RotationState(rotation=deform_grad, norm=jnp.inf, iteration=0, success=True)
     state = lax.while_loop(
-        lambda state: (state.norm > max_norm) & (state.iteration < max_iter), body, state
+        lambda state: (state.norm > max_norm) & (state.iteration < max_iter),
+        body,
+        state,
     )
     final_rotation = jnp.linalg.inv(np.mean(state.rotation, axis=0))
     return final_rotation, state
@@ -160,7 +168,9 @@ class Dynamics(BodyPosition):
         self.moved_base = self.get_rotation(self.displacement_old)
 
     def get_rotation(self, displacement):
-        final_rotation, state = _get_rotation_jax(displacement, self.matrices.dx_big_jax)
+        final_rotation, state = _get_rotation_jax(
+            displacement, self.matrices.dx_big_jax
+        )
         if not state.success:
             raise Exception("Error calculating rotation")
         # print(state.iteration, state.norm)
@@ -181,7 +191,9 @@ class Dynamics(BodyPosition):
                 elements=self.elements,
                 nodes=self.moved_nodes,
                 body_prop=self.body_prop,
-                independent_indices=slice(self.nodes_count),  # self.independent_indices,
+                independent_indices=slice(
+                    self.nodes_count
+                ),  # self.independent_indices,
             )
 
         self.matrices = cmh.profile(fun_dyn, baypass=True)
@@ -210,7 +222,9 @@ class Dynamics(BodyPosition):
                 * self.time_step
             )
 
-            self.solver_cache.lhs_sparse_jax = jxh.to_jax_sparse(self.solver_cache.lhs_sparse)
+            self.solver_cache.lhs_sparse_jax = jxh.to_jax_sparse(
+                self.solver_cache.lhs_sparse
+            )
             # Calculating Jacobi preconditioner
             # TODO: Check SSOR / Incomplete Cholesky
             self.solver_cache.lhs_preconditioner_jax = jxh.to_jax_sparse(
@@ -234,7 +248,9 @@ class Dynamics(BodyPosition):
                 free_indices=self.free_indices,  ###
             )
 
-            free_x_free_inverted = jax.scipy.linalg.inv(self.solver_cache.free_x_free.todense())
+            free_x_free_inverted = jax.scipy.linalg.inv(
+                self.solver_cache.free_x_free.todense()
+            )
             self.solver_cache.lhs_boundary = (
                 self.solver_cache.contact_x_contact.todense()
                 - self.solver_cache.contact_x_free.todense()

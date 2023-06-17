@@ -51,12 +51,16 @@ class Mesh:
         self.boundaries: Boundaries
 
         def fun_data():
-            self.reinitialize_data(mesh_prop, boundaries_description, create_in_subprocess)
+            self.reinitialize_data(
+                mesh_prop, boundaries_description, create_in_subprocess
+            )
 
         cmh.profile(fun_data, baypass=True)
 
     def remesh(self, boundaries_description, create_in_subprocess):
-        self.reinitialize_data(self.mesh_prop, boundaries_description, create_in_subprocess)
+        self.reinitialize_data(
+            self.mesh_prop, boundaries_description, create_in_subprocess
+        )
 
     def reinitialize_data(
         self,
@@ -86,7 +90,12 @@ class Mesh:
         size = self.elements.shape[1]
         directional_edges = np.array(
             list(
-                {(e[i], e[j]) for i, j in np.ndindex((size, size)) if j != i for e in self.elements}
+                {
+                    (e[i], e[j])
+                    for i, j in np.ndindex((size, size))
+                    if j != i
+                    for e in self.elements
+                }
             ),
             dtype=np.int64,
         )  # j > i - non-directional edges
@@ -141,7 +150,11 @@ class Mesh:
     @property
     def free_nodes_count(self):
         # TODO: #65 CHECK
-        return self.independent_nodes_count - self.contact_nodes_count - self.dirichlet_nodes_count
+        return (
+            self.independent_nodes_count
+            - self.contact_nodes_count
+            - self.dirichlet_nodes_count
+        )
 
     @property
     def boundary_indices(self):

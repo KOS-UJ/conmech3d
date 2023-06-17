@@ -44,21 +44,29 @@ class ForwardNet(nn.Module):
             # in JAX code uniform is multiplied by 3, so using custom version
 
         def bias_init(key, shape, dtype=jnp.float_):
-            return jax.random.uniform(key, shape, dtype, -1) / jnp.sqrt(x.shape[1])  # shape[0]
+            return jax.random.uniform(key, shape, dtype, -1) / jnp.sqrt(
+                x.shape[1]
+            )  # shape[0]
             # bias gets 64 features after linear layer (64) instead of input featureas (128)
 
         # _ = train
         if self.input_batch_norm:
-            x = nn.BatchNorm(use_running_average=not train, momentum=0.9, epsilon=1e-8)(x)
+            x = nn.BatchNorm(use_running_average=not train, momentum=0.9, epsilon=1e-8)(
+                x
+            )
         for _ in range(self.internal_layer_count):
             x = nn.Dense(
-                features=self.latent_dimension, kernel_init=kernel_init, bias_init=bias_init
+                features=self.latent_dimension,
+                kernel_init=kernel_init,
+                bias_init=bias_init,
             )(x)
             x = nn.relu(x)  #### nn.tanh(x) nn.relu(x) nn.gelu(x)
         output_linear_dim = (
             self.output_linear_dim if self.output_linear_dim else self.latent_dimension
         )
-        x = nn.Dense(features=output_linear_dim, kernel_init=kernel_init, bias_init=bias_init)(x)
+        x = nn.Dense(
+            features=output_linear_dim, kernel_init=kernel_init, bias_init=bias_init
+        )(x)
         if self.layer_norm:
             x = nn.LayerNorm()(x)
         return x
@@ -66,7 +74,12 @@ class ForwardNet(nn.Module):
 
 class MessagePassingJax(nn.Module):
     def propagate(
-        self, node_latents_from, node_latents_to, edge_latents, edge_index, receivers_count
+        self,
+        node_latents_from,
+        node_latents_to,
+        edge_latents,
+        edge_index,
+        receivers_count,
     ):
         senders, receivers = edge_index
         node_latents_senders = node_latents_from.at[senders].get()
@@ -79,7 +92,9 @@ class MessagePassingJax(nn.Module):
         new_edge_latents = self.message(edge_inputs=edge_inputs)
 
         aggregated_edge_latents = self.aggregate(
-            new_edge_latents=new_edge_latents, receivers=receivers, receivers_count=receivers_count
+            new_edge_latents=new_edge_latents,
+            receivers=receivers,
+            receivers_count=receivers_count,
         )
 
         new_node_latents = self.update(
@@ -88,7 +103,9 @@ class MessagePassingJax(nn.Module):
         )
         return new_node_latents, edge_latents  # new_edge_latents
 
-    def get_edge_inputs(self, node_latents_senders, node_latents_receivers, edge_latents):
+    def get_edge_inputs(
+        self, node_latents_senders, node_latents_receivers, edge_latents
+    ):
         _ = node_latents_senders, node_latents_receivers
         return edge_latents
 
@@ -120,13 +137,18 @@ class ProcessorLayer(MessagePassingJax):
         )
         return new_node_latents, new_edge_latents
 
-    def get_edge_inputs(self, node_latents_senders, node_latents_receivers, edge_latents):
-        edge_inputs = jnp.hstack((node_latents_senders, edge_latents, node_latents_receivers))
+    def get_edge_inputs(
+        self, node_latents_senders, node_latents_receivers, edge_latents
+    ):
+        edge_inputs = jnp.hstack(
+            (node_latents_senders, edge_latents, node_latents_receivers)
+        )
         return edge_inputs
 
     def message(self, edge_inputs):
         new_edge_latents = ForwardNet(
-            latent_dimension=self.latent_dimension, internal_layer_count=self.internal_layer_count
+            latent_dimension=self.latent_dimension,
+            internal_layer_count=self.internal_layer_count,
         )(edge_inputs, train=self.train)
         return new_edge_latents
 
@@ -134,14 +156,18 @@ class ProcessorLayer(MessagePassingJax):
         # alpha = self.attention(new_edge_latents, index)
         # TODO: check if sorted is needed, add degree normalizarion: https://pytorch-geometric.readthedocs.io/en/latest/notes/create_gnn.html
         aggregated_edge_latents = (
-            jax.ops.segment_sum(new_edge_latents, receivers, num_segments=receivers_count) / 10.0
+            jax.ops.segment_sum(
+                new_edge_latents, receivers, num_segments=receivers_count
+            )
+            / 10.0
         )  ### segment-mean !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         return aggregated_edge_latents
 
     def update(self, node_latents_to, aggregated_edge_latents):
         node_inputs = jnp.hstack((node_latents_to, aggregated_edge_latents))
         new_node_latents = node_latents_to + ForwardNet(
-            latent_dimension=self.latent_dimension, internal_layer_count=self.internal_layer_count
+            latent_dimension=self.latent_dimension,
+            internal_layer_count=self.internal_layer_count,
         )(node_inputs, train=self.train)
         return new_node_latents
 
@@ -153,7 +179,11 @@ class LinkProcessorLayer(MessagePassingJax):
 
     @nn.compact
     def __call__(
-        self, node_latents_sparse, node_latents_dense, edge_latents_to_dense, edge_index_to_dense
+        self,
+        node_latents_sparse,
+        node_latents_dense,
+        edge_latents_to_dense,
+        edge_index_to_dense,
     ):
         new_node_latents, _ = self.propagate(
             node_latents_from=node_latents_sparse,
@@ -164,13 +194,18 @@ class LinkProcessorLayer(MessagePassingJax):
         )
         return new_node_latents
 
-    def get_edge_inputs(self, node_latents_senders, node_latents_receivers, edge_latents):
-        edge_inputs = jnp.hstack((node_latents_senders, edge_latents, node_latents_receivers))
+    def get_edge_inputs(
+        self, node_latents_senders, node_latents_receivers, edge_latents
+    ):
+        edge_inputs = jnp.hstack(
+            (node_latents_senders, edge_latents, node_latents_receivers)
+        )
         return edge_inputs
 
     def message(self, edge_inputs):
         new_edge_latents = ForwardNet(
-            latent_dimension=self.latent_dimension, internal_layer_count=self.internal_layer_count
+            latent_dimension=self.latent_dimension,
+            internal_layer_count=self.internal_layer_count,
         )(edge_inputs, train=self.train)
         return new_edge_latents
 
@@ -184,7 +219,8 @@ class LinkProcessorLayer(MessagePassingJax):
     def update(self, node_latents_to, aggregated_edge_latents):
         _ = node_latents_to
         linked_node_latents = ForwardNet(
-            latent_dimension=self.latent_dimension, internal_layer_count=self.internal_layer_count
+            latent_dimension=self.latent_dimension,
+            internal_layer_count=self.internal_layer_count,
         )(aggregated_edge_latents, train=self.train)
         return linked_node_latents  # jnp.hstack((node_latents_to, linked_node_latents))
 
@@ -257,7 +293,9 @@ class CustomGraphNetJax(nn.Module):
 
         node_data_sparse = get_data_norm("sparse_nodes", args.sparse_x)
         edge_data_sparse = get_data_norm("sparse_edges", args.sparse_edge_attr)
-        edge_data_multilayer = get_data_norm("multilayer_edges", args.multilayer_edge_attr)
+        edge_data_multilayer = get_data_norm(
+            "multilayer_edges", args.multilayer_edge_attr
+        )
         node_data_dense = get_data_norm("dense_nodes", args.dense_x)
         edge_data_dense = get_data_norm("dense_edges", args.dense_edge_attr)
 

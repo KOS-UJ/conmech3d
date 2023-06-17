@@ -37,7 +37,9 @@ class Logger:
             return "".join("\t" + line for line in json_str.splitlines(True))
 
         data_str = pretty_json(self.config.td)
-        self.writer.add_text(f"{self.config.current_time}_parameters.txt", data_str, global_step=0)
+        self.writer.add_text(
+            f"{self.config.current_time}_parameters.txt", data_str, global_step=0
+        )
         file_path = f"{self.current_log_catalog}/parameters_{self.dataset.data_id}.txt"
         with open(file_path, "w", encoding="utf-8") as file:
             file.write(data_str)
@@ -47,7 +49,9 @@ class Logger:
         # normalized_df = (df - df.mean()) / df.std()
         # self.save_hist(df=normalized_df, name=f"{name}_normalized")
         data_str = st.describe().to_json()
-        self.writer.add_text(f"{self.config.current_time}_{st.label}.txt", data_str, global_step=0)
+        self.writer.add_text(
+            f"{self.config.current_time}_{st.label}.txt", data_str, global_step=0
+        )
 
     def save_hist(self, st: FeaturesStatistics):
         # pandas_axs = st.pandas_data.hist(figsize=(20, 10))  # , ec="k")
@@ -56,12 +60,18 @@ class Logger:
         scale = 7
         rows = (df.columns.size // columns) + df.columns.size % columns
         fig, axs = plt.subplots(
-            rows, columns, figsize=(columns * scale, rows * scale), sharex="all", sharey="row"
+            rows,
+            columns,
+            figsize=(columns * scale, rows * scale),
+            sharex="all",
+            sharey="row",
         )  # , sharex="col", sharey="row"
         axs = axs.flatten()
         for i in range(rows * columns):
             if i < df.columns.size:
-                df.hist(column=df.columns[i], bins=100, ax=axs[i])  # bins=12 , figsize=(20, 18)
+                df.hist(
+                    column=df.columns[i], bins=100, ax=axs[i]
+                )  # bins=12 , figsize=(20, 18)
             else:
                 axs[i].axis("off")
 
@@ -86,7 +96,9 @@ class Logger:
             profile_memory=True,
             # record_shapes=True,
             # with_stack=True,
-            schedule=torch.profiler.schedule(skip_first=2, wait=0, warmup=2, active=6, repeat=1),
+            schedule=torch.profiler.schedule(
+                skip_first=2, wait=0, warmup=2, active=6, repeat=1
+            ),
             on_trace_ready=trace_handler,
         )
         profiler.start()

@@ -38,13 +38,25 @@ class Drawer:
     ):
         fig, axes = fig_axes or plt.subplots()
 
-        x_min = min(min(self.state.body.initial_nodes[:, 0]), min(self.state.displaced_nodes[:, 0]))
-        x_max = max(max(self.state.body.initial_nodes[:, 0]), max(self.state.displaced_nodes[:, 0]))
+        x_min = min(
+            min(self.state.body.initial_nodes[:, 0]),
+            min(self.state.displaced_nodes[:, 0]),
+        )
+        x_max = max(
+            max(self.state.body.initial_nodes[:, 0]),
+            max(self.state.displaced_nodes[:, 0]),
+        )
         dx = x_max - x_min
         x_margin = dx * 0.2
         xlim = (x_min - x_margin, x_max + x_margin)
-        y_min = min(min(self.state.body.initial_nodes[:, 1]), min(self.state.displaced_nodes[:, 1]))
-        y_max = max(max(self.state.body.initial_nodes[:, 1]), max(self.state.displaced_nodes[:, 1]))
+        y_min = min(
+            min(self.state.body.initial_nodes[:, 1]),
+            min(self.state.displaced_nodes[:, 1]),
+        )
+        y_max = max(
+            max(self.state.body.initial_nodes[:, 1]),
+            max(self.state.displaced_nodes[:, 1]),
+        )
         dy = y_max - y_min
         y_margin = dy * 0.2
         ylim = (y_min - y_margin, y_max + y_margin)
@@ -78,11 +90,15 @@ class Drawer:
                 node_color=self.deformed_mesh_color,
                 edge_color=self.deformed_mesh_color,
             )
-        self.draw_boundary(edges=self.mesh.contact_boundary, nodes=nodes, axes=axes, edge_color="b")
+        self.draw_boundary(
+            edges=self.mesh.contact_boundary, nodes=nodes, axes=axes, edge_color="b"
+        )
         self.draw_boundary(
             edges=self.mesh.dirichlet_boundary, nodes=nodes, axes=axes, edge_color="r"
         )
-        self.draw_boundary(edges=self.mesh.neumann_boundary, nodes=nodes, axes=axes, edge_color="g")
+        self.draw_boundary(
+            edges=self.mesh.neumann_boundary, nodes=nodes, axes=axes, edge_color="g"
+        )
 
         # turns on axis, since networkx turn them off
         plt.axis("on")
@@ -128,7 +144,9 @@ class Drawer:
             ax=axes,
         )
 
-    def draw_boundary(self, edges, nodes, axes, label="", node_color="k", edge_color="k"):
+    def draw_boundary(
+        self, edges, nodes, axes, label="", node_color="k", edge_color="k"
+    ):
         graph = nx.Graph()
         for edge in edges:
             graph.add_edge(edge[0], edge[1])
@@ -162,6 +180,8 @@ class Drawer:
         )
 
         # cbar_ax = f.add_axes([0.875, 0.15, 0.025, 0.6])
-        sm = plt.cm.ScalarMappable(cmap=self.cmap, norm=plt.Normalize(vmin=v_min, vmax=v_max))
+        sm = plt.cm.ScalarMappable(
+            cmap=self.cmap, norm=plt.Normalize(vmin=v_min, vmax=v_max)
+        )
         sm.set_array([])
         fig.colorbar(sm, orientation="horizontal", label="Norm of stress tensor")
