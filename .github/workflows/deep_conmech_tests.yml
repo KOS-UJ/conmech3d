@@ -10,7 +10,7 @@ jobs:
   run_tests:
     runs-on: ubuntu-latest
     container:
-      image: michaljur/deep_conmech:latest
+      image: michaljur/conmech3d:latest
     steps:
       - name: Downloading code
         shell: bash
