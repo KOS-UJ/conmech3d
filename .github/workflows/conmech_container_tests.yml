@@ -14,11 +14,11 @@ jobs:
     steps:
       - name: Downloading code
         shell: bash
+        run: |
           rm -rf *
           git init
           url=${{ github.repositoryUrl }}
           git remote add origin ${url/git:/https:}
-        run: |
           git pull origin ${{ github.sha }}
       - name: Running tests
         shell: bash
