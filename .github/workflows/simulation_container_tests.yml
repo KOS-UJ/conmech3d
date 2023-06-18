@@ -1,4 +1,4 @@
-name: Deep Conmech Tests
+name: Tests of simulatios in container
 
 on:
   push:
@@ -22,4 +22,4 @@ jobs:
           git pull origin ${{ github.sha }}
       - name: Running tests
         shell: bash
-        run: PYTHONPATH=. pytest tests/test_deep_conmech -p no:unraisableexception
+        run: pytest --ignore=tests/test_deep_conmech -p no:unraisableexception -s --verbose
