@@ -282,7 +282,7 @@ class GraphModelDynamicJax:
             if train:
                 self.examples_seen += loss_raport.count  # * self.world_size
 
-            loss_description = f"{tqdm_description} loss: {(mean_loss_raport.main):.4f}"
+            loss_description = f"{tqdm_description} loss: {(mean_loss_raport.main):.5f}"
             if batch_id == len(batch_tqdm) - 1:
                 self.save_raport(
                     states=states,
