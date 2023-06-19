@@ -60,13 +60,13 @@ def main():
         #     simulation_config=get_simulation_config(mode),
         #     scale_forces=scale_forces,
         # ),
-        bunny_obstacles(
-            mesh_density=32,
-            scale=1,
-            final_time=final_time,
-            simulation_config=get_simulation_config(),
-            scale_forces=scale_forces,
-        ),
+        # bunny_obstacles(
+        #     mesh_density=32,
+        #     scale=1,
+        #     final_time=final_time,
+        #     simulation_config=get_simulation_config(),
+        #     scale_forces=scale_forces,
+        # ),
         # bunny_rotate_3d(
         #     mesh_density=32,
         #     scale=1,
@@ -175,7 +175,7 @@ def main():
                 all_mesh=[
                     MeshProperties(
                         dimension=3,
-                        mesh_type="slide_left",
+                        mesh_type="slide_up",
                         scale=[1],
                         mesh_density=[16],
                         initial_position=[0, 0, -1],  # -2],

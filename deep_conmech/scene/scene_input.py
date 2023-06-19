@@ -77,6 +77,7 @@ class SceneInput(SceneRandomized):
                 data_to=data_jax,
                 directional_edges=directional_edges,
             )
+
         with jax.default_device(jax.devices("cpu")[0]):
             # TODO: Add historical data
             if reduced:
@@ -137,7 +138,9 @@ class SceneInput(SceneRandomized):
             )
 
         with jax.default_device(jax.devices("cpu")[0]):
-            boundary_normals = prepare_nodes(scene.get_normalized_boundary_normals_jax())
+            boundary_normals = prepare_nodes(
+                scene.get_normalized_boundary_normals_jax()
+            )
 
             # boundary_friction = self.prepare_node_data(
             #     data=self.get_friction_input(),

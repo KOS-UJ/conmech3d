@@ -16,6 +16,7 @@ jobs:
         shell: bash
         run: |
           rm -rf *
+          git config --global --add safe.directory '*'
           git init
           url=${{ github.repositoryUrl }}
           git remote add origin ${url/git:/https:}

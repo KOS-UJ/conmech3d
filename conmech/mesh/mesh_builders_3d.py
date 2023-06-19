@@ -114,7 +114,6 @@ def get_pygmsh_slide(mesh_prop):
         slope = 0.3
 
         height = slope * depth
-        #  depth width height
         if "left" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
@@ -131,6 +130,24 @@ def get_pygmsh_slide(mesh_prop):
                     [depth, -width, height],
                     [depth, width, -height],
                     [-depth, width, -height],
+                ]
+            )
+        elif "up" in mesh_prop.mesh_type:
+            poly = geom.add_polygon(
+                [
+                    [-depth, -height, -width],
+                    [depth, -height, -width],
+                    [depth, height, width],
+                    [-depth, height, width],
+                ]
+            )
+        elif "down" in mesh_prop.mesh_type:
+            poly = geom.add_polygon(
+                [
+                    [-depth, -height, width],
+                    [depth, -height, width],
+                    [depth, height, -width],
+                    [-depth, height, -width],
                 ]
             )
         else:

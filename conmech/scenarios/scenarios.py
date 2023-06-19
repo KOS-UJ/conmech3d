@@ -753,7 +753,7 @@ def bunny_obstacles(
                 mesh_type="slide_right",
                 scale=[1],
                 mesh_density=[16],
-                initial_position=[0, -2, -(i + 1)],
+                initial_position=[0, -1, -(i + 1.2)],
             )
         )
 

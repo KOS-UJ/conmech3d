@@ -46,7 +46,7 @@ def run_simulation(mode):
             mode=mode,
         )
 
-    final_time = 1.2  # 8
+    final_time = 8
     scale_forces = 5.0
 
     # all_print_scenaros = scenarios.all_print(config.td, config.sc)
