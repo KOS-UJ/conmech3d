@@ -12,7 +12,9 @@ from conmech.helpers.config import Config
 from conmech.mesh.boundaries_description import BoundariesDescription
 from conmech.plotting.drawer import Drawer
 from conmech.scenarios.problems import TemperatureDynamic
-from conmech.simulations.problem_solver import TemperatureTimeDependent as TDynamicProblemSolver
+from conmech.simulations.problem_solver import (
+    TemperatureTimeDependent as TDynamicProblemSolver,
+)
 from conmech.state.state import TemperatureState
 from examples.p_slope_contact_law import make_slope_contact_law
 import matplotlib.tri as tri
@@ -36,19 +38,25 @@ def compute_error(ref: TemperatureState, sol: TemperatureState):
         x1 = ref.body.initial_nodes[element[1]]
         x2 = ref.body.initial_nodes[element[2]]
         if total_abs_error[element[0]] != np.nan:
-            total_abs_error[element[0]] = (  # abs(ref.velocity[element[0], 0] - u1hi(*x0))
+            total_abs_error[
+                element[0]
+            ] = (  # abs(ref.velocity[element[0], 0] - u1hi(*x0))
                 # + abs(ref.velocity[element[0], 1] - u2hi(*x0))
                 +abs(ref.temperature[element[0]] - thi(*x0))
                 / ref.temperature[element[0]]
             )
         if total_abs_error[element[1]] != np.nan:
-            total_abs_error[element[1]] = (  # abs(ref.velocity[element[1], 0] - u1hi(*x1))
+            total_abs_error[
+                element[1]
+            ] = (  # abs(ref.velocity[element[1], 0] - u1hi(*x1))
                 # + abs(ref.velocity[element[1], 1] - u2hi(*x1))
                 +abs(ref.temperature[element[1]] - thi(*x1))
                 / ref.temperature[element[1]]
             )
         if total_abs_error[element[2]] != np.nan:
-            total_abs_error[element[2]] = (  # abs(ref.velocity[element[2], 0] - u1hi(*x2))
+            total_abs_error[
+                element[2]
+            ] = (  # abs(ref.velocity[element[2], 0] - u1hi(*x2))
                 # + abs(ref.velocity[element[2], 1] - u2hi(*x2))
                 +abs(ref.temperature[element[2]] - thi(*x2))
                 / ref.temperature[element[2]]

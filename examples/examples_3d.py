@@ -1,4 +1,5 @@
 import numpy as np
+from dotenv import load_dotenv
 
 from conmech.helpers.config import Config, SimulationConfig
 from conmech.properties.body_properties import TimeDependentBodyProperties
@@ -31,6 +32,7 @@ simulation_config = SimulationConfig(
 
 
 def main(mesh_density=16, final_time=2, plot_animation=True):  # 100
+    load_dotenv()
     schedule = Schedule(final_time=final_time, time_step=0.01)
     basic_scenarios = [
         Scenario(

@@ -1,0 +1,25 @@
+# name: Deep Conmech in a container
+
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
+
+# jobs:
+#   run_tests:
+#     runs-on: ubuntu-latest
+#     container:
+#       image: michaljur/conmech3d:latest
+#     steps:
+#       - name: Downloading code
+#         shell: bash
+#         run: |
+#           rm -rf *
+#           git init
+#           url=${{ github.repositoryUrl }}
+#           git remote add origin ${url/git:/https:}
+#           git pull origin ${{ github.sha }}
+#       - name: Running tests
+#         shell: bash
+#         run: PYTHONPATH=. pytest tests/test_deep_conmech -p no:unraisableexception

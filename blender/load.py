@@ -106,7 +106,9 @@ def load_mesh_animation(simulation):
             samples = [simulation[frame_num][0][v.index][i] for frame_num in frames]
             fc = action.fcurves.new(f"vertices[{v.index}].co", index=i)
             fc.keyframe_points.add(count=len(frames))
-            fc.keyframe_points.foreach_set("co", [x for co in zip(frames, samples) for x in co])
+            fc.keyframe_points.foreach_set(
+                "co", [x for co in zip(frames, samples) for x in co]
+            )
             fc.update()
 
     mesh_object.select_set(True)
@@ -152,9 +154,13 @@ def load_mesh_animation(simulation):
         for idx in poly.vertices:
             for i in range(4):
                 samples = all_colors[idx, :, i]
-                fc = action.fcurves.new(f"vertex_colors.active.data[{index}].color", index=i)
+                fc = action.fcurves.new(
+                    f"vertex_colors.active.data[{index}].color", index=i
+                )
                 fc.keyframe_points.add(count=len(frames))
-                fc.keyframe_points.foreach_set("co", [x for co in zip(frames, samples) for x in co])
+                fc.keyframe_points.foreach_set(
+                    "co", [x for co in zip(frames, samples) for x in co]
+                )
                 fc.update()
             index += 1
 
@@ -324,7 +330,10 @@ def add_mesh_obstacles(simulation):
             return
         print(initial_nodes.min(axis=0), initial_nodes.max(axis=0))
         mesh, mesh_object = create_mesh(
-            initial_nodes, initial_elements, with_temperature=False, name="CustomObstacle"
+            initial_nodes,
+            initial_elements,
+            with_temperature=False,
+            name="CustomObstacle",
         )
 
 

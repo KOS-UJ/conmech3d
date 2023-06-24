@@ -133,7 +133,9 @@ def _zoom(
             state.phi_rec,
         )
         use_cubic = (state.j > 0) & (a_j_cubic > a + cchk) & (a_j_cubic < b - cchk)
-        a_j_quad = _quadmin(state.a_lo, state.phi_lo, state.dphi_lo, state.a_hi, state.phi_hi)
+        a_j_quad = _quadmin(
+            state.a_lo, state.phi_lo, state.dphi_lo, state.a_hi, state.phi_hi
+        )
         use_quad = (~use_cubic) & (a_j_quad > a + qchk) & (a_j_quad < b - qchk)
         a_j_bisection = (state.a_lo + state.a_hi) / 2.0
         use_bisection = (~use_cubic) & (~use_quad)
@@ -151,7 +153,9 @@ def _zoom(
 
         hi_to_j = wolfe_one_neg(a_j, phi_j) | (phi_j >= state.phi_lo)
         star_to_j = wolfe_two(dphi_j) & (~hi_to_j)
-        hi_to_lo = (dphi_j * (state.a_hi - state.a_lo) >= 0.0) & (~hi_to_j) & (~star_to_j)
+        hi_to_lo = (
+            (dphi_j * (state.a_hi - state.a_lo) >= 0.0) & (~hi_to_j) & (~star_to_j)
+        )
         lo_to_j = (~hi_to_j) & (~star_to_j)
 
         state = state._replace(
@@ -211,7 +215,9 @@ def _zoom(
         state = state._replace(j=state.j + 1)
         # Choose higher cutoff for maxiter than Scipy as Jax takes longer to find
         # the same value - possibly floating point issues?
-        state = state._replace(failed=state.failed | state.j >= maxiter_zoom)  # custom change
+        state = state._replace(
+            failed=state.failed | state.j >= maxiter_zoom
+        )  # custom change
         return state
 
     state = lax.while_loop(
@@ -364,7 +370,9 @@ def custom_line_search_jax(
         phi_i, dphi_i, g_i = restricted_func_and_grad(a_i)
         state = state._replace(nfev=state.nfev + 1, ngev=state.ngev + 1)
 
-        star_to_zoom1 = wolfe_one_neg(a_i, phi_i) | ((phi_i >= state.phi_i1) & (state.i > 1))
+        star_to_zoom1 = wolfe_one_neg(a_i, phi_i) | (
+            (phi_i >= state.phi_i1) & (state.i > 1)
+        )
         star_to_i = wolfe_two(dphi_i) & (~star_to_zoom1)
         star_to_zoom2 = (dphi_i >= 0.0) & (~star_to_zoom1) & (~star_to_i)
 
@@ -383,7 +391,9 @@ def custom_line_search_jax(
             maxiter_zoom,
         )
 
-        state = state._replace(nfev=state.nfev + zoom1.nfev, ngev=state.ngev + zoom1.ngev)
+        state = state._replace(
+            nfev=state.nfev + zoom1.nfev, ngev=state.ngev + zoom1.ngev
+        )
 
         zoom2 = _zoom(
             restricted_func_and_grad,
@@ -400,7 +410,9 @@ def custom_line_search_jax(
             maxiter_zoom,
         )
 
-        state = state._replace(nfev=state.nfev + zoom2.nfev, ngev=state.ngev + zoom2.ngev)
+        state = state._replace(
+            nfev=state.nfev + zoom2.nfev, ngev=state.ngev + zoom2.ngev
+        )
 
         state = state._replace(
             done=star_to_zoom1 | state.done,
@@ -439,7 +451,9 @@ def custom_line_search_jax(
         return state
 
     state = lax.while_loop(
-        lambda state: (~state.done) & (state.i <= maxiter_main) & (~state.failed), body, state
+        lambda state: (~state.done) & (state.i <= maxiter_main) & (~state.failed),
+        body,
+        state,
     )
 
     status = jnp.where(
@@ -567,7 +581,7 @@ def get_state_initial(
     x0: Array,
     norm=jnp.inf,
     maxcor: int = 10,
-    ftol: float = 1e-08,  # 1e-09,  # 2.220446049250313e-09,
+    ftol: float = 1e-09,  # 1e-09,  # 2.220446049250313e-09,
     gtol: float = 1e-05,
     maxfun: Optional[float] = None,
     maxgrad: Optional[float] = None,
@@ -672,7 +686,9 @@ def _two_loop_recursion(state: LBFGSResults):
     def body_fun1(j, carry):
         i = his_size - 1 - j
         _q, _a_his = carry
-        a_i = state.get_rho_history(i) * jnp.real(_dot(jnp.conj(state.get_s_history(i)), _q))
+        a_i = state.get_rho_history(i) * jnp.real(
+            _dot(jnp.conj(state.get_s_history(i)), _q)
+        )
         _a_his = _a_his.at[i].set(a_i)
         _q = _q - a_i * jnp.conj(state.get_y_history(i))
         return _q, _a_his

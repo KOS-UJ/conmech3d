@@ -16,7 +16,9 @@ from conmech.properties.schedule import Schedule
 def _get_unoriented_normals_2d_jax(faces_nodes):
     tail_nodes, head_nodes = faces_nodes[:, 0], faces_nodes[:, 1]
 
-    unoriented_normals = jxh.get_tangential_2d(jxh.normalize_euclidean(head_nodes - tail_nodes))
+    unoriented_normals = jxh.get_tangential_2d(
+        jxh.normalize_euclidean(head_nodes - tail_nodes)
+    )
     return tail_nodes, unoriented_normals
 
 
@@ -41,12 +43,16 @@ def _get_boundary_surfaces_normals_jax(
 
     internal_nodes = moved_nodes[boundary_internal_indices]
     external_orientation = (-1) * jnp.sign(
-        nph.elementwise_dot(internal_nodes - tail_nodes, unoriented_normals, keepdims=True)
+        nph.elementwise_dot(
+            internal_nodes - tail_nodes, unoriented_normals, keepdims=True
+        )
     )
     return unoriented_normals * external_orientation
 
 
-def _aggrergate_boundary_surfaces_jax(data, boundary_surfaces, considered_nodes_count, agg_fun):
+def _aggrergate_boundary_surfaces_jax(
+    data, boundary_surfaces, considered_nodes_count, agg_fun
+):
     return agg_fun(
         jnp.array(
             [
@@ -87,7 +93,9 @@ def _get_element_volume_part_jax(moved_nodes, boundary_surfaces):
     nodes_count = boundary_surfaces.shape[1]
 
     if dimension == 2:
-        volume = jxh.euclidean_norm(moved_boundary_nodes[:, 1, :] - moved_boundary_nodes[:, 0, :])
+        volume = jxh.euclidean_norm(
+            moved_boundary_nodes[:, 1, :] - moved_boundary_nodes[:, 0, :]
+        )
     elif dimension == 3:
         volume = 0.5 * jxh.euclidean_norm(
             jnp.cross(
@@ -101,7 +109,9 @@ def _get_element_volume_part_jax(moved_nodes, boundary_surfaces):
     return volume / nodes_count
 
 
-def get_surface_per_boundary_node_jax(moved_nodes, boundary_surfaces, considered_nodes_count):
+def get_surface_per_boundary_node_jax(
+    moved_nodes, boundary_surfaces, considered_nodes_count
+):
     # print("get_surface_per_boundary_node_jax")
     element_volume_part = _get_element_volume_part_jax(moved_nodes, boundary_surfaces)
 
@@ -409,7 +419,8 @@ class BodyPosition:
 
     def get_surface_per_boundary_node_jax(self):
         return jax.jit(
-            get_surface_per_boundary_node_jax, static_argnames=["considered_nodes_count"]
+            get_surface_per_boundary_node_jax,
+            static_argnames=["considered_nodes_count"],
         )(
             moved_nodes=self.moved_nodes,
             boundary_surfaces=self.boundary_surfaces,

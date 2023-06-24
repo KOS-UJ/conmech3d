@@ -9,7 +9,9 @@ import pytest
 
 from conmech.mesh.boundaries_description import BoundariesDescription
 from conmech.scenarios.problems import TemperatureDynamic
-from conmech.simulations.problem_solver import TemperatureTimeDependent as TDynamicProblem
+from conmech.simulations.problem_solver import (
+    TemperatureTimeDependent as TDynamicProblem,
+)
 from examples.p_slope_contact_law import make_slope_contact_law
 from tests.test_conmech.regression.std_boundary import standard_boundary_nodes
 
@@ -67,8 +69,12 @@ def generate_test_suits():
         ze_coef: ... = 4
         time_step: ... = 0.1
         contact_law: ... = make_slope_contact_law_temp(1e1)
-        thermal_expansion: ... = np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]])
-        thermal_conductivity: ... = np.array([[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]])
+        thermal_expansion: ... = np.array(
+            [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]]
+        )
+        thermal_conductivity: ... = np.array(
+            [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
+        )
 
         @staticmethod
         def inner_forces(x):
@@ -197,8 +203,12 @@ def generate_test_suits():
         return np.array([0, -0.2])
 
     setup_0_m02_p_0.inner_forces = inner_forces
-    expected_displacement_vector_0_m02_p_0 = [-v for v in expected_displacement_vector_0_02_p_0]
-    expected_temperature_vector_0_m02_p_0 = [-v for v in expected_temperature_vector_0_02_p_0]
+    expected_displacement_vector_0_m02_p_0 = [
+        -v for v in expected_displacement_vector_0_02_p_0
+    ]
+    expected_temperature_vector_0_m02_p_0 = [
+        -v for v in expected_temperature_vector_0_02_p_0
+    ]
     test_suites.append(
         (
             setup_0_m02_p_0,
@@ -219,8 +229,12 @@ def generate_test_suits():
         ze_coef: ... = 4.99
         time_step: ... = 0.1
         contact_law: ... = make_slope_contact_law_temp(2.71)
-        thermal_expansion: ... = np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]])
-        thermal_conductivity: ... = np.array([[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]])
+        thermal_expansion: ... = np.array(
+            [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]]
+        )
+        thermal_conductivity: ... = np.array(
+            [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
+        )
 
         @staticmethod
         def inner_forces(x):

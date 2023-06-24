@@ -65,8 +65,12 @@ class TDynamicSetup(TemperatureDynamic):
     ze_coef: ... = 4
     time_step: ... = 0.02
     contact_law: ... = TPSlopeContactLaw
-    thermal_expansion: ... = np.array([[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]])
-    thermal_conductivity: ... = np.array([[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]])
+    thermal_expansion: ... = np.array(
+        [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]]
+    )
+    thermal_conductivity: ... = np.array(
+        [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
+    )
 
     @staticmethod
     def initial_temperature(x: np.ndarray) -> np.ndarray:
@@ -88,7 +92,9 @@ class TDynamicSetup(TemperatureDynamic):
     def friction_bound(u_nu):
         return 0
 
-    boundaries: ... = BoundariesDescription(contact=lambda x: x[1] == 0, dirichlet=lambda x: False)
+    boundaries: ... = BoundariesDescription(
+        contact=lambda x: x[1] == 0, dirichlet=lambda x: False
+    )
 
 
 def main(show: bool = True, save: bool = False):

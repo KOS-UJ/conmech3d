@@ -40,11 +40,15 @@ def get_solve_function(simulation_config):
         state = GraphModelDynamicJax.load_checkpointed_net(path=checkpoint_path)
 
         if training_config.td.use_dataset_statistics:
-            train_dataset = get_train_dataset(training_config.td.dataset, config=training_config)
+            train_dataset = get_train_dataset(
+                training_config.td.dataset, config=training_config
+            )
             train_dataset.load_indices()
 
         if "compare" in simulation_config.mode:
-            return partial(model_jax.solve_compare, apply_net=model_jax.get_apply_net(state))
+            return partial(
+                model_jax.solve_compare, apply_net=model_jax.get_apply_net(state)
+            )
         return partial(model_jax.solve, apply_net=model_jax.get_apply_net(state))
 
     raise ArgumentError
@@ -75,7 +79,11 @@ def create_scene(scenario):
                 create_in_subprocess=create_in_subprocess,
                 simulation_config=scenario.simulation_config,
             )
-        elif scenario.simulation_config.mode in ["net", "compare_net", "compare_reduced"]:
+        elif scenario.simulation_config.mode in [
+            "net",
+            "compare_net",
+            "compare_reduced",
+        ]:
             from deep_conmech.scene.scene_input import SceneInput
 
             randomize = False
@@ -103,7 +111,9 @@ def create_scene(scenario):
         else:
             raise ArgumentError
 
-        scene.normalize_and_set_obstacles(scenario.linear_obstacles, scenario.mesh_obstacles)
+        scene.normalize_and_set_obstacles(
+            scenario.linear_obstacles, scenario.mesh_obstacles
+        )
         return scene
 
     scene = cmh.profile(
@@ -116,7 +126,12 @@ def create_scene(scenario):
 
 
 def run_examples(
-    all_scenarios, file, plot_animation, config: Config, simulate_dirty_data=False, save_all=False
+    all_scenarios,
+    file,
+    plot_animation,
+    config: Config,
+    simulate_dirty_data=False,
+    save_all=False,
 ):
     scenes = []
     for i, scenario in enumerate(all_scenarios):
@@ -158,7 +173,8 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     else:
         blender_data += (None,)
 
-    for obs in scene.mesh_obstacles:  # TODO: Mesh obstacles and temperature - create dataclass
+    for obs in scene.mesh_obstacles:
+        # TODO: Mesh obstacles and temperature - create dataclass
         blender_data += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
 
     pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
@@ -166,7 +182,9 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     # Comparer
     comparer_data_path = scenes_path + "_comparer"
 
-    normalized_nodes = scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
+    normalized_nodes = (
+        scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
+    )
     comparer_data = {
         "displacement_old": scene.displacement_old,
         "exact_acceleration": scene.exact_acceleration,
@@ -174,7 +192,9 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
         "lifted_acceleration": scene.lifted_acceleration,
         "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
         "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
-        "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration),
+        "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(
+            scene.exact_acceleration
+        ),
     }
 
     pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
@@ -204,7 +224,9 @@ def run_scenario(
     save_animation = run_config.plot_animation
 
     # if save_files:
-    final_catalog = f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
+    final_catalog = (
+        f"{config.output_catalog}/{config.current_time} - {run_config.catalog}"
+    )
     cmh.create_folders(f"{final_catalog}/scenarios")
     #     if with_reduced:
     cmh.create_folders(f"{final_catalog}/scenarios_reduced")
@@ -229,7 +251,9 @@ def run_scenario(
                 scene=scene, step=step[0], folder=f"{final_catalog}/three/{label}"
             )
         if run_config.save_all or plot_index:
-            save_scene(scene=scene, scenes_path=scenes_path, save_animation=save_animation)
+            save_scene(
+                scene=scene, scenes_path=scenes_path, save_animation=save_animation
+            )
             if with_reduced:
                 save_scene(
                     scene=scene.reduced,
@@ -288,9 +312,13 @@ def print_mesh_data(scene):
     print()
 
 
-def prepare_energy_functions(scenario, scene, solve_function, with_temperature, precompile):
+def prepare_energy_functions(
+    scenario, scene, solve_function, with_temperature, precompile
+):
     energy_functions = EnergyFunctions(simulation_config=scene.simulation_config)
-    reduced_energy_functions = EnergyFunctions(simulation_config=scene.simulation_config)
+    reduced_energy_functions = EnergyFunctions(
+        simulation_config=scene.simulation_config
+    )
 
     if not precompile:
         return [energy_functions, reduced_energy_functions]

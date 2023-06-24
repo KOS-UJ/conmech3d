@@ -36,7 +36,9 @@ def get_optimization_function(fun, hes_inv):
 
 
 def _get_compiled_optimization_function(fun, hes_inv, sample_x0, sample_args):
-    return get_optimization_function(fun, hes_inv).lower(sample_x0, sample_args).compile()
+    return (
+        get_optimization_function(fun, hes_inv).lower(sample_x0, sample_args).compile()
+    )
 
 
 def set_compiled_optimization_functions(energy_functions, hes_inv, x0, args):
@@ -76,7 +78,9 @@ class Calculator:
         x0 = jnp.asarray(initial_vector)
 
         if function is not None:  # TODO: Refactor
-            opti_fun = function  # get_optimization_function(fun=function, hes_inv=hes_inv)
+            opti_fun = (
+                function  # get_optimization_function(fun=function, hes_inv=hes_inv)
+            )
         else:
             opti_fun = set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args)
 
@@ -115,7 +119,9 @@ class Calculator:
             function=function,
             verbose=verbose,
         )
-        return nph.displacement_to_acceleration(np.asarray(disp_by_factor * range_factor), args)
+        return nph.displacement_to_acceleration(
+            np.asarray(disp_by_factor * range_factor), args
+        )
 
     @staticmethod
     def solve_skinning(
@@ -134,6 +140,7 @@ class Calculator:
 
         with timer["dense_solver"]:
             if dense_path is None:
+                print("UPDATE")
                 # scene.reduced.exact_acceleration, _ = Calculator.solve(
                 #     scene=scene.reduced,
                 #     energy_functions=energy_functions[1],
@@ -146,8 +153,8 @@ class Calculator:
                     initial_a=scene.exact_acceleration,
                     timer=timer,
                 )
-                scene.reduced.exact_acceleration = scene.lift_acceleration_from_position(
-                    scene.exact_acceleration
+                scene.reduced.exact_acceleration = (
+                    scene.lift_acceleration_from_position(scene.exact_acceleration)
                 )
             else:
                 (
@@ -159,21 +166,33 @@ class Calculator:
 
         with timer["lower_data"]:
             scene.lifted_acceleration = np.array(
-                scene.lower_acceleration_from_position(scene.reduced.lifted_acceleration)
+                scene.lower_acceleration_from_position(
+                    scene.reduced.lifted_acceleration
+                )
             )
 
-            scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(
-                scene.lifted_acceleration
+            scene.norm_lifted_new_displacement = (
+                scene.get_norm_by_reduced_lifted_new_displacement(
+                    scene.lifted_acceleration
+                )
             )
             scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
                 new_displacement=scene.norm_lifted_new_displacement,
                 reduced_exact_acceleration=scene.reduced.exact_acceleration,
             )
 
-            # norm_exact_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)
-            # print("NORM MAIN:", np.linalg.norm(norm_exact_new_displacement))
-            # print("NORM SKINNING:", np.linalg.norm(scene.norm_lifted_new_displacement))
-            # print("NORM DIFF:", np.linalg.norm(norm_exact_new_displacement - scene.norm_lifted_new_displacement))
+            norm_exact_new_displacement = (
+                scene.get_norm_by_reduced_lifted_new_displacement(
+                    scene.exact_acceleration
+                )
+            )
+            print("NORM NORMAL:", np.linalg.norm(norm_exact_new_displacement))
+            print(
+                "NORM DIFF:",
+                np.linalg.norm(
+                    norm_exact_new_displacement - scene.norm_lifted_new_displacement
+                ),
+            )
 
         return scene.exact_acceleration, None
         # if dense_path is None:
@@ -190,7 +209,9 @@ class Calculator:
     ):
         _ = initial_a, initial_t
         energy_functions = (
-            energy_functions[0] if hasattr(energy_functions, "__len__") else energy_functions
+            energy_functions[0]
+            if hasattr(energy_functions, "__len__")
+            else energy_functions
         )
         with timer["reduced_solver"]:
             exact_acceleration, _ = Calculator.solve(
@@ -206,12 +227,28 @@ class Calculator:
             )
             scene.reduced.lifted_acceleration = scene.reduced.exact_acceleration
 
-        scene.norm_lifted_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(
-            scene.lifted_acceleration
+        scene.norm_lifted_new_displacement = (
+            scene.get_norm_by_reduced_lifted_new_displacement(scene.lifted_acceleration)
         )
         scene.recentered_norm_lifted_new_displacement = scene.recenter_by_reduced(
             new_displacement=scene.norm_lifted_new_displacement,
             reduced_exact_acceleration=scene.reduced.exact_acceleration,
+        )
+
+        skinning_acceleration = np.array(
+            scene.lower_acceleration_from_position(scene.reduced.lifted_acceleration)
+        )
+        normalized_new_displacement_skinning = (
+            scene.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration)
+        )
+
+        print("NORM NORMAL:", np.linalg.norm(scene.norm_lifted_new_displacement))
+        print(
+            "NORM DIFF:",
+            np.linalg.norm(
+                scene.norm_lifted_new_displacement
+                - normalized_new_displacement_skinning
+            ),
         )
 
         return np.array(exact_acceleration), None
@@ -261,7 +298,9 @@ class Calculator:
 
         matrix = scene.solver_cache.lhs_sparse_jax
         vector = scene.get_normalized_rhs_jax(temperature)
-        initial_point = jnp.array(nph.stack_column(initial_a)) if initial_a is not None else None
+        initial_point = (
+            jnp.array(nph.stack_column(initial_a)) if initial_a is not None else None
+        )
 
         if scene.simulation_config.use_lhs_preconditioner:
             preconditioner = scene.solver_cache.lhs_preconditioner_jax
@@ -322,7 +361,9 @@ class Calculator:
         temperature = scene.t_old
         last_normalized_a, normalized_a, last_t = np.empty(0), np.empty(0), np.empty(0)
         energy_functions = (
-            energy_functions[0] if hasattr(energy_functions, "__len__") else energy_functions
+            energy_functions[0]
+            if hasattr(energy_functions, "__len__")
+            else energy_functions
         )
         while (
             i < 2
@@ -338,7 +379,9 @@ class Calculator:
             )
             i += 1
             if i >= max_iter:
-                raise ArgumentError(f"Uzawa algorithm: maximum of {max_iter} iterations exceeded")
+                raise ArgumentError(
+                    f"Uzawa algorithm: maximum of {max_iter} iterations exceeded"
+                )
             if uzawa is False:
                 break
 
@@ -351,7 +394,9 @@ class Calculator:
     def solve_temperature(
         setting: SceneTemperature, normalized_acceleration: np.ndarray, initial_t
     ):
-        t = Calculator.solve_temperature_normalized(setting, normalized_acceleration, initial_t)
+        t = Calculator.solve_temperature_normalized(
+            setting, normalized_acceleration, initial_t
+        )
         cleaned_t = Calculator.clean_temperature(setting, t)
         return cleaned_t
 
@@ -403,7 +448,9 @@ class Calculator:
         timer: Timer = Timer(),
     ):
         energy_functions = (
-            energy_functions[0] if hasattr(energy_functions, "__len__") else energy_functions
+            energy_functions[0]
+            if hasattr(energy_functions, "__len__")
+            else energy_functions
         )
         if initial_a is None:
             initial_a_vector = np.zeros(scene.nodes_count * scene.dimension)
@@ -412,7 +459,9 @@ class Calculator:
 
         with timer["__get_energy_obstacle_args"]:
             args = cmh.profile(
-                lambda: scene.get_energy_obstacle_args_for_jax(energy_functions, temperature),
+                lambda: scene.get_energy_obstacle_args_for_jax(
+                    energy_functions, temperature
+                ),
                 baypass=True,
             )
         hes_inv = (
@@ -460,8 +509,13 @@ class Calculator:
                     normalized_t_rhs,
                 )
 
-            energy_functions.temperature_cost_function = _get_compiled_optimization_function(
-                fun=fun, hes_inv=None, sample_x0=initial_t_vector, sample_args=normalized_t_rhs
+            energy_functions.temperature_cost_function = (
+                _get_compiled_optimization_function(
+                    fun=fun,
+                    hes_inv=None,
+                    sample_x0=initial_t_vector,
+                    sample_args=normalized_t_rhs,
+                )
             )
 
         normalized_t_vector = Calculator.minimize_jax(
@@ -494,7 +548,9 @@ class Calculator:
         )
 
         boundary_t_vector = boundary_t_vector_np.reshape(-1, 1)
-        t_vector = Calculator.complete_t_vector(scene, normalized_t_rhs_free, boundary_t_vector)
+        t_vector = Calculator.complete_t_vector(
+            scene, normalized_t_rhs_free, boundary_t_vector
+        )
         return t_vector
 
     @staticmethod
@@ -511,7 +567,9 @@ class Calculator:
         # a_independent_vector = scene.solver_cache.free_x_free_inverted @ (
         #     normalized_rhs_free - (scene.solver_cache.free_x_contact @ a_contact_vector)
         # )
-        s1 = normalized_rhs_free - (scene.solver_cache.free_x_contact @ a_contact_vector)
+        s1 = normalized_rhs_free - (
+            scene.solver_cache.free_x_contact @ a_contact_vector
+        )
         a_independent_vector = jxh.solve_linear_jax(
             matrix=scene.solver_cache.free_x_free, vector=s1
         )
@@ -525,7 +583,9 @@ class Calculator:
         return nph.stack(normalized_a)
 
     @staticmethod
-    def complete_t_vector(scene: SceneTemperature, normalized_t_rhs_free, t_contact_vector):
+    def complete_t_vector(
+        scene: SceneTemperature, normalized_t_rhs_free, t_contact_vector
+    ):
         t_independent_vector = scene.solver_cache.temperature_free_x_free_inv @ (
             normalized_t_rhs_free
             - (scene.solver_cache.temperature_free_x_contact @ t_contact_vector)

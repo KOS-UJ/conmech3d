@@ -29,7 +29,10 @@ def make_contact_law(limit_value, limit):
 
         @staticmethod
         def potential_tangential_direction(u_tau: np.ndarray) -> float:
-            return -0.3 * np.exp(-np.sum(u_tau * u_tau) ** 0.5) + 0.7 * np.sum(u_tau * u_tau) ** 0.5
+            return (
+                -0.3 * np.exp(-np.sum(u_tau * u_tau) ** 0.5)
+                + 0.7 * np.sum(u_tau * u_tau) ** 0.5
+            )
             # return np.log(np.sum(u_tau * u_tau) ** 0.5 + 1)\
 
         @staticmethod
@@ -53,7 +56,9 @@ r = 0.05
 eps = 0.01
 
 
-def make_setup(mesh_type_, boundaries_, contact_law_, elements_number_, friction_bound_):
+def make_setup(
+    mesh_type_, boundaries_, contact_law_, elements_number_, friction_bound_
+):
     @dataclass()
     class QuasistaticSetup(Quasistatic):
         grid_height: ... = 1.0

@@ -67,7 +67,9 @@ class ScenariosDataset(BaseDataset):
             raise Exception("Cannot divide data generation work")
         assigned_scenarios_count = int(scenarios_count / num_workers)
         assigned_scenarios = self.all_scenarios[
-            process_id * assigned_scenarios_count : (process_id + 1) * assigned_scenarios_count
+            process_id
+            * assigned_scenarios_count : (process_id + 1)
+            * assigned_scenarios_count
         ]
         return assigned_scenarios
 
@@ -82,7 +84,9 @@ class ScenariosDataset(BaseDataset):
         )
         scene.set_randomization(config)
 
-        scene.normalize_and_set_obstacles(scenario.linear_obstacles, scenario.mesh_obstacles)
+        scene.normalize_and_set_obstacles(
+            scenario.linear_obstacles, scenario.mesh_obstacles
+        )
         return scene
 
     def print_stats(self, scene):
@@ -94,7 +98,9 @@ class ScenariosDataset(BaseDataset):
     def generate_data(self):
         if self.config.generate_data_in_subprocesses:
             # mph.run_process(self.generate_data_process)
-            done = mph.run_processes(self.generate_data_process, num_workers=self.num_workers)
+            done = mph.run_processes(
+                self.generate_data_process, num_workers=self.num_workers
+            )
             if not done:
                 print("NOT DONE")
         else:
@@ -103,7 +109,9 @@ class ScenariosDataset(BaseDataset):
     def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
         assigned_scenarios = self.get_assigned_scenarios(num_workers, process_id)
         tqdm_description = f"Generating data - process {process_id+1}/{num_workers}"
-        simulation_data_count = np.sum([s.schedule.episode_steps for s in assigned_scenarios])
+        simulation_data_count = np.sum(
+            [s.schedule.episode_steps for s in assigned_scenarios]
+        )
         start_index = process_id * simulation_data_count
         # current_index = start_index
         step_tqdm = cmh.get_tqdm(
@@ -121,7 +129,9 @@ class ScenariosDataset(BaseDataset):
                 scenario = assigned_scenarios[int(index / episode_steps)]
                 print(f"Scenario {scenario.name}")
                 scene = self.get_scene(scenario=scenario, config=self.config)
-                energy_functions = EnergyFunctions(simulation_config=scene.simulation_config)
+                energy_functions = EnergyFunctions(
+                    simulation_config=scene.simulation_config
+                )
                 reduced_energy_functions = EnergyFunctions(
                     simulation_config=scene.simulation_config
                 )
@@ -143,7 +153,9 @@ class ScenariosDataset(BaseDataset):
             # )
             # current_index += 1
 
-            final_catalog = f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
+            final_catalog = (
+                f"{self.config.output_catalog}/{self.config.current_time} - DATASET"
+            )
             label = f"{scene.simulation_config.mode}_{scene.mesh_prop.mesh_type}"
 
             label = cmh.get_run_label(self.config, scenario)

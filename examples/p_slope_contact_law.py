@@ -28,7 +28,9 @@ def make_slope_contact_law(slope: float) -> Type[ContactLaw]:
             """
             Coulomb regularization
             """
-            regularization = 1 / np.sqrt(u_tau[0] * u_tau[0] + u_tau[1] * u_tau[1] + rho**2)
+            regularization = 1 / np.sqrt(
+                u_tau[0] * u_tau[0] + u_tau[1] * u_tau[1] + rho**2
+            )
             result = regularization * (u_tau[0] * v_tau[0] + u_tau[1] * v_tau[1])
             return result
 

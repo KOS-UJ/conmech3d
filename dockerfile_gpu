@@ -16,7 +16,9 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 COPY . .
 
 RUN pip install --upgrade pip
+RUN pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements.txt
-# RUN pip install -r requirements-deep.txt
+RUN pip install -r requirements-deep.txt
 
 ENV PYTHONPATH "${PYTHONPATH}:."

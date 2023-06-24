@@ -70,7 +70,9 @@ def root_mean_square_error_torch(predicted, exact):
 
 def mean_error_torch(predicted, exact):
     return torch.mean(
-        torch.linalg.norm(predicted - exact, axis=-1)  # / torch.linalg.norm(exact, axis=-1)
+        torch.linalg.norm(
+            predicted - exact, axis=-1
+        )  # / torch.linalg.norm(exact, axis=-1)
     )
 
 

@@ -171,7 +171,9 @@ def generate_test_suits():
 
 
 @pytest.mark.parametrize("setup, expected_displacement_vector", generate_test_suits())
-def test_global_optimization_solver(solving_method, setup, expected_displacement_vector):
+def test_global_optimization_solver(
+    solving_method, setup, expected_displacement_vector
+):
     runner = TimeDependentProblem(setup, solving_method)
     results = runner.solve(
         n_steps=32,

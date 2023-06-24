@@ -42,7 +42,9 @@ def to_jax_sparse(matrix):
     if coo_matrix is None:
         return None
     indices = np.block([[coo_matrix.row], [coo_matrix.col]]).T
-    result = jax.experimental.sparse.BCOO((coo_matrix.data, indices), shape=coo_matrix.shape)
+    result = jax.experimental.sparse.BCOO(
+        (coo_matrix.data, indices), shape=coo_matrix.shape
+    )
     return result.sort_indices()
 
 

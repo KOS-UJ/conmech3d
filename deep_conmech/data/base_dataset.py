@@ -74,7 +74,9 @@ def get_dataloader(
     load_data: bool,
     collate_fn=None,
 ):
-    sampler = DistributedSampler(dataset, num_replicas=world_size, rank=rank, shuffle=shuffle)
+    sampler = DistributedSampler(
+        dataset, num_replicas=world_size, rank=rank, shuffle=shuffle
+    )
     return DataLoader(
         dataset=dataset,
         batch_size=batch_size,
@@ -186,7 +188,9 @@ class BaseDataset:
         self.load_indices()
 
         if self.check_indices():
-            print(f"Taking prepared dataset ({self.get_size(self.features_data_path):.2f} GB)")
+            print(
+                f"Taking prepared dataset ({self.get_size(self.features_data_path):.2f} GB)"
+            )
             return
 
         self.unload_and_clear_indices()
@@ -213,7 +217,9 @@ class BaseDataset:
 
         self.scene_indices = self.get_all_scene_indices()
         if self.data_count == len(self.scene_indices):
-            print(f"Taking prepared scenes ({self.get_size(self.scenes_data_path):.2f} GB)")
+            print(
+                f"Taking prepared scenes ({self.get_size(self.scenes_data_path):.2f} GB)"
+            )
             return
 
         print("Clearing old data")
@@ -256,26 +262,32 @@ class BaseDataset:
         return self.data_count == len(self.features_indices)
 
     def load_indices(self):
-        self.features_indices = pkh.get_all_indices(self.features_data_path)[: self.data_count]
+        self.features_indices = pkh.get_all_indices(self.features_data_path)[
+            : self.data_count
+        ]
 
     def get_size(self, data_path):
         return os.path.getsize(data_path) / 1024**3
 
     def save_features_and_target(self, scene):
         layers_list = [
-            scene.get_features_data(layer_number=layer_number, to_cpu=True)
+            scene.get_features_data(layer_number=layer_number)
             for layer_number in range(len(scene.all_layers))
         ]
-        target_data = scene.get_target_data(to_cpu=True)
+        target_data = scene.get_target_data()
 
-        graph_data = GraphData(layer_list=layers_list, target_data=target_data, scene=None)
+        graph_data = GraphData(
+            layer_list=layers_list, target_data=target_data, scene=None
+        )
         pkh.append_data(
             data=graph_data,
             data_path=self.features_data_path,
             lock=self.files_lock,
         )
 
-    def initialize_features_and_targets_process(self, num_workers: int = 1, process_id: int = 0):
+    def initialize_features_and_targets_process(
+        self, num_workers: int = 1, process_id: int = 0
+    ):
         assigned_data_range = range(process_id, self.data_count, num_workers)
         data_tqdm = cmh.get_tqdm(
             iterable=assigned_data_range,
@@ -309,6 +321,7 @@ class BaseDataset:
             "dense_edges": FeaturesStatistics(),
             "target_normalized_new_displacement": FeaturesStatistics(),
         }
+        # return statistics
 
         for graph_data in cmh.get_tqdm(
             dataloader, config=self.config, desc="Calculating dataset mean and max abs"
@@ -317,7 +330,9 @@ class BaseDataset:
             (dense_layer, sparse_layer), target_layer = graph_data[0]
             statistics["sparse_nodes"].set_mean_and_max_abs(sparse_layer.x)
             statistics["sparse_edges"].set_mean_and_max_abs(sparse_layer.edge_attr)
-            statistics["multilayer_edges"].set_mean_and_max_abs(sparse_layer.edge_attr_to_down)
+            statistics["multilayer_edges"].set_mean_and_max_abs(
+                sparse_layer.edge_attr_to_down
+            )
             statistics["dense_nodes"].set_mean_and_max_abs(dense_layer.x)
             statistics["dense_edges"].set_mean_and_max_abs(dense_layer.edge_attr)
             statistics["target_normalized_new_displacement"].set_mean_and_max_abs(
@@ -386,7 +401,9 @@ class BaseDataset:
 
             sparse_nodes_data = cat(sparse_nodes_data, sparse_layer.x)
             sparse_edges_data = cat(sparse_edges_data, sparse_layer.edge_attr)
-            multilayer_edges_data = cat(multilayer_edges_data, sparse_layer.edge_attr_to_down)
+            multilayer_edges_data = cat(
+                multilayer_edges_data, sparse_layer.edge_attr_to_down
+            )
 
             dense_nodes_data = cat(dense_nodes_data, dense_layer.x)
             dense_edges_data = cat(dense_edges_data, dense_layer.edge_attr)
@@ -403,12 +420,18 @@ class BaseDataset:
                 data=sparse_nodes_data,
                 # columns=SceneInput.get_nodes_data_description_sparse(self.dimension)
             ),
-            "sparse_edges": FeaturesStatisticsPandas(label="sparse_edges", data=sparse_edges_data),
+            "sparse_edges": FeaturesStatisticsPandas(
+                label="sparse_edges", data=sparse_edges_data
+            ),
             "multilayer_edges": FeaturesStatisticsPandas(
                 label="multilayer_edges", data=multilayer_edges_data
             ),
-            "dense_nodes": FeaturesStatisticsPandas(label="dense_nodes", data=dense_nodes_data),
-            "dense_edges": FeaturesStatisticsPandas(label="dense_edges", data=dense_edges_data),
+            "dense_nodes": FeaturesStatisticsPandas(
+                label="dense_nodes", data=dense_nodes_data
+            ),
+            "dense_edges": FeaturesStatisticsPandas(
+                label="dense_edges", data=dense_edges_data
+            ),
             "target_normalized_new_displacement": FeaturesStatisticsPandas(
                 label="target_normalized_new_displacement", data=target_data
             ),
@@ -450,19 +473,33 @@ class BaseDataset:
             shifted_index = index % len(self.loaded_data)
             return self.loaded_data[shifted_index]
         with pkh.open_file_read(self.features_data_path) as file:
-            return pkh.load_byte_index(byte_index=self.features_indices[index], data_file=file)
+            return pkh.load_byte_index(
+                byte_index=self.features_indices[index], data_file=file
+            )
 
     def check_and_print(
-        self, all_data_count, current_index, scene, step_tqdm, tqdm_description, current_time
+        self,
+        all_data_count,
+        current_index,
+        scene,
+        step_tqdm,
+        tqdm_description,
+        current_time,
     ):
         images_count = self.config.dataset_images_count
         if images_count is None:
             return
-        plot_index_skip = 1 if all_data_count < images_count else int(all_data_count / images_count)
+        plot_index_skip = (
+            1 if all_data_count < images_count else int(all_data_count / images_count)
+        )
         relative_index = 1 if plot_index_skip == 0 else current_index % plot_index_skip
         if relative_index == 0:
-            step_tqdm.set_description(f"{tqdm_description} - plotting index {current_index}")
-            self.plot_data_scene(scene, current_index, self.images_directory, current_time)
+            step_tqdm.set_description(
+                f"{tqdm_description} - plotting index {current_index}"
+            )
+            self.plot_data_scene(
+                scene, current_index, self.images_directory, current_time
+            )
         if relative_index == 1:
             step_tqdm.set_description(tqdm_description)
 
@@ -481,7 +518,9 @@ class BaseDataset:
     def generate_data_process(self, num_workers: int = 1, process_id: int = 0):
         pass
 
-    def solve_and_prepare_scene(self, scene, forces, energy_functions, reduced_energy_functions):
+    def solve_and_prepare_scene(
+        self, scene, forces, energy_functions, reduced_energy_functions
+    ):
         scene.prepare(forces)
 
         # scene.reduced.exact_acceleration, _ = self.solve_function(
@@ -495,9 +534,18 @@ class BaseDataset:
         #     scene.reduced.exact_acceleration
         # )
 
-        scene.exact_acceleration, _ = self.solve_function(
-            scene=scene, initial_a=scene.exact_acceleration, energy_functions=energy_functions
-        )
+        dense_path = cmh.get_base_for_comarison()
+        if dense_path is not None:
+            (
+                scene.exact_acceleration,
+                _,
+            ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
+        else:
+            scene.exact_acceleration, _ = self.solve_function(
+                scene=scene,
+                initial_a=scene.exact_acceleration,
+                energy_functions=energy_functions,
+            )
         scene.lifted_acceleration = scene.exact_acceleration
 
         scene.reduced.lifted_acceleration = scene.lift_acceleration_from_position(
@@ -528,7 +576,7 @@ class BaseDataset:
     @property
     def _len_jax(self):
         # if not 'validation' in self.main_directory:
-        #     return 50
+        # return 50
         return self.data_count // self.device_count
 
     def __getitem__(self, index: int):

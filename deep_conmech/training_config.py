@@ -105,3 +105,20 @@ class TrainingConfig(Config):
     load_training_data_to_ram: bool = False
     load_validation_data_to_ram: bool = False
     profile_training: bool = False
+
+
+def get_train_config(shell, mode):
+    config = TrainingConfig(shell=shell)
+    config.sc = SimulationConfig(
+        use_normalization=False,
+        use_linear_solver=False,
+        use_green_strain=True,
+        use_nonconvex_friction_law=False,
+        use_constant_contact_integral=False,  # True,  # False, ##############
+        use_lhs_preconditioner=False,
+        with_self_collisions=True,
+        mesh_layer_proportion=4,  # 2 4
+        use_pca=False,
+        mode=mode,
+    )
+    return config

@@ -32,7 +32,9 @@ def generate_test_suits():
         body_prop=scenarios.default_body_prop,
         schedule=Schedule(final_time=1.5),
         forces_function=np.array([0.0, -0.5]),
-        obstacle=Obstacle(np.array([[[0.7, 1.0]], [[0.0, 0.2]]]), scenarios.default_obstacle_prop),
+        obstacle=Obstacle(
+            np.array([[[0.7, 1.0]], [[0.0, 0.2]]]), scenarios.default_obstacle_prop
+        ),
         simulation_config=simulation_config,
     )
 
@@ -70,7 +72,9 @@ def generate_test_suits():
     yield scenario, expected_boundary_nodes
 
 
-@pytest.mark.parametrize("scenario, expected_boundary_nodes", list(generate_test_suits()))
+@pytest.mark.parametrize(
+    "scenario, expected_boundary_nodes", list(generate_test_suits())
+)
 def test_simulation(scenario, expected_boundary_nodes):
     config = Config()
     _ = config

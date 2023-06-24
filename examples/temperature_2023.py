@@ -39,7 +39,9 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
 
     obstacle_geometry = np.array([[[0.0, 0.0, 1.0]], [[0.0, 0.0, 0.76]]])
 
-    thermal_expansion_coefficients = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    thermal_expansion_coefficients = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    )
     thermal_conductivity_coefficients = np.array(
         [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
     )

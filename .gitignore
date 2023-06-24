@@ -1,23 +1,14 @@
-#flax/*
-
-# VSCode
-#.vscode/*
-#.isort.cfg
-
 # PyCharm
 .idea/*
-
-*.tfrecord
-*.pkl
-meta/*
 
 # conmech input/output
 log/*
 datasets/*
-blender/output/*
 output**/*
-three/**/*.json
+build/*
+cython_modules/*.html
 
+*.ipynb
 *.c
 
 *.mp4
@@ -25,10 +16,13 @@ three/**/*.json
 *.jpg
 *.png
 *.pdf
-*.pt
-*.txt
 
 events.*
+
+*.pt
+*.tfrecord
+*.pkl
+meta/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

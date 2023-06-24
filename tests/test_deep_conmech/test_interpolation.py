@@ -22,7 +22,16 @@ def test_interpolate_scaled_nodes_3d():
     scaled_nodes = np.random.uniform(size=(1000, 3))
 
     vector = np.array(
-        [[1, 1, 1], [1, 1, 0], [1, 0, 1], [1, 0, 0], [0, 1, 1], [0, 1, 0], [0, 0, 1], [0, 0, 0]],
+        [
+            [1, 1, 1],
+            [1, 1, 0],
+            [1, 0, 1],
+            [1, 0, 0],
+            [0, 1, 1],
+            [0, 1, 0],
+            [0, 0, 1],
+            [0, 0, 0],
+        ],
         dtype=np.float64,
     )
     interpolated_scaled_nodes = interpolate_scaled_nodes_numba(

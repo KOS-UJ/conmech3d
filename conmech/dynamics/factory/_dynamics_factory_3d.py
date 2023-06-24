@@ -51,7 +51,10 @@ def get_edges_features_dictionary_numba(elements, nodes):
 
                 v = [INT_PH * j_d_phi for j_d_phi in j_d_phi_vec]
 
-                w = [[i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec] for i_d_phi in i_d_phi_vec]
+                w = [
+                    [i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec]
+                    for i_d_phi in i_d_phi_vec
+                ]
 
                 result = element_volume * np.array(
                     [
@@ -116,9 +119,14 @@ def get_edges_features_matrix_numba(elements, nodes):
 
                 v = [INT_PH * j_d_phi for j_d_phi in j_d_phi_vec]
 
-                w = [[i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec] for i_d_phi in i_d_phi_vec]
+                w = [
+                    [i_d_phi * j_d_phi for j_d_phi in j_d_phi_vec]
+                    for i_d_phi in i_d_phi_vec
+                ]
 
-                edges_features_matrix[:, element[i], element[j]] += element_volume * np.array(
+                edges_features_matrix[
+                    :, element[i], element[j]
+                ] += element_volume * np.array(
                     [
                         volume_at_nodes,
                         u,
@@ -143,7 +151,9 @@ def get_edges_features_matrix_numba(elements, nodes):
 @numba.njit
 def get_integral_parts_numba(element_nodes, element_index):
     x_i = element_nodes[element_index]
-    x_j1, x_j2, x_j3 = list(element_nodes[np.arange(ELEMENT_NODES_COUNT) != element_index])
+    x_j1, x_j2, x_j3 = list(
+        element_nodes[np.arange(ELEMENT_NODES_COUNT) != element_index]
+    )
 
     dm = denominator_numba(x_i, x_j1, x_j2, x_j3)
     element_volume = np.abs(dm) / VOLUME_DIVIDER
@@ -251,7 +261,9 @@ class DynamicsFactory3D(AbstractDynamicsFactory):
 
     def calculate_acceleration(self, U, density):
         Z = scipy.sparse.csr_matrix(U.shape)
-        return density * scipy.sparse.bmat([[U, Z, Z], [Z, U, Z], [Z, Z, U]], format="csr")
+        return density * scipy.sparse.bmat(
+            [[U, Z, Z], [Z, U, Z], [Z, Z, U]], format="csr"
+        )
 
     def calculate_thermal_expansion(self, V, coeff):
         A_11 = coeff[0][0] * V[0] + coeff[0][1] * V[1] + coeff[0][2] * V[2]

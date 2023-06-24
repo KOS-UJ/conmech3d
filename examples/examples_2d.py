@@ -1,4 +1,5 @@
 import numpy as np
+from dotenv import load_dotenv
 
 import conmech.scenarios.scenarios as scenarios
 from conmech.helpers.config import Config, SimulationConfig
@@ -22,6 +23,7 @@ simulation_config = SimulationConfig(
 
 
 def main(mesh_density=20, final_time=5, plot_animation=True):  # 40
+    load_dotenv()
     schedule = Schedule(final_time=final_time, time_step=0.01)
     config = Config(shell=False, animation_backend="matplotlib")
     obstacles = [
@@ -41,7 +43,9 @@ def main(mesh_density=20, final_time=5, plot_animation=True):  # 40
             np.array([[[0.0, 1.0]], [[0.0, 0.0]]]),
             ObstacleProperties(hardness=100.0, friction=0.5),
         ),
-        Obstacle(np.array([[[0.0, 1.0]], [[0.0, 0.0]]]), scenarios.default_obstacle_prop),
+        Obstacle(
+            np.array([[[0.0, 1.0]], [[0.0, 0.0]]]), scenarios.default_obstacle_prop
+        ),
     ]
     all_scenarios = [
         # scenarios.polygon_mesh_obstacles(

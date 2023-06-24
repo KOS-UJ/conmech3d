@@ -179,7 +179,9 @@ def get_temp_body_prop(thermal_expansion_coeff, thermal_conductivity_coeff):
 
 
 default_obstacle_prop = ObstacleProperties(hardness=100.0, friction=5.0)
-default_temp_obstacle_prop = TemperatureObstacleProperties(hardness=100.0, friction=5.0, heat=0.01)
+default_temp_obstacle_prop = TemperatureObstacleProperties(
+    hardness=100.0, friction=5.0, heat=0.01
+)
 
 M_RECTANGLE = "pygmsh_rectangle"
 M_SPLINE = "pygmsh_spline"
@@ -382,7 +384,9 @@ def polygon_mesh_obstacles(
     )
 
 
-def circle_slope(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def circle_slope(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("slope", default_obstacle_prop)
     return Scenario(
         name=f"circle_slope{tag}",
@@ -397,7 +401,9 @@ def circle_slope(mesh_density, scale, final_time, simulation_config: SimulationC
     )
 
 
-def spline_down(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def spline_down(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("bottom", default_obstacle_prop)
     return Scenario(
         name=f"spline_down{tag}",
@@ -412,7 +418,9 @@ def spline_down(mesh_density, scale, final_time, simulation_config: SimulationCo
     )
 
 
-def circle_up_left(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def circle_up_left(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("back", default_obstacle_prop)
     return Scenario(
         name=f"circle_up_left{tag}",
@@ -427,7 +435,9 @@ def circle_up_left(mesh_density, scale, final_time, simulation_config: Simulatio
     )
 
 
-def polygon_left(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def polygon_left(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("back", default_obstacle_prop)
     obstacle.geometry *= scale
     return Scenario(
@@ -443,7 +453,9 @@ def polygon_left(mesh_density, scale, final_time, simulation_config: SimulationC
     )
 
 
-def polygon_slope(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def polygon_slope(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("slope", default_obstacle_prop)
     return Scenario(
         name=f"polygon_slope{tag}",
@@ -458,7 +470,9 @@ def polygon_slope(mesh_density, scale, final_time, simulation_config: Simulation
     )
 
 
-def circle_rotate(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def circle_rotate(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("side", default_obstacle_prop)
     return Scenario(
         name=f"circle_rotate{tag}",
@@ -473,7 +487,9 @@ def circle_rotate(mesh_density, scale, final_time, simulation_config: Simulation
     )
 
 
-def polygon_rotate(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def polygon_rotate(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("side", default_obstacle_prop)
     return Scenario(
         name=f"polygon_rotate{tag}",
@@ -488,7 +504,9 @@ def polygon_rotate(mesh_density, scale, final_time, simulation_config: Simulatio
     )
 
 
-def polygon_stay(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def polygon_stay(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("side", default_obstacle_prop)
     return Scenario(
         name=f"polygon_stay{tag}",
@@ -506,7 +524,9 @@ def polygon_stay(mesh_density, scale, final_time, simulation_config: SimulationC
     )
 
 
-def polygon_two(mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""):
+def polygon_two(
+    mesh_density, scale, final_time, simulation_config: SimulationConfig, tag=""
+):
     obstacle = Obstacle.get_linear_obstacle("two", default_obstacle_prop)
     return Scenario(
         name=f"polygon_two{tag}",
@@ -717,23 +737,20 @@ def bunny_obstacles(
 ):
     _, _, _ = scale, tag, arg
     obstacle_meshes = []
-    for i in [1]:  # range(1,5):
+    for i in range(1, 4):
+        if i % 2 == 1:
+            shift = 0
+            mesh_type = "slide_left"
+        else:
+            shift = -1.5
+            mesh_type = "slide_right"
         obstacle_meshes.append(
             MeshProperties(
                 dimension=3,
-                mesh_type="slide_left",
+                mesh_type=mesh_type,
                 scale=[1],
                 mesh_density=[16],
-                initial_position=[0, 0, -i],
-            )
-        )
-        obstacle_meshes.append(
-            MeshProperties(
-                dimension=3,
-                mesh_type="slide_right",
-                scale=[1],
-                mesh_density=[16],
-                initial_position=[0, -2, -(i + 1)],
+                initial_position=[0, shift, -1.6 * i],
             )
         )
 
@@ -750,7 +767,9 @@ def bunny_obstacles(
         forces_function=scale_forces * np.array([0.0, 0.0, -1.0]),
         obstacle=Obstacle(
             geometry=None,
-            properties=ObstacleProperties(hardness=100.0, friction=2.0),  # 100 5.0 # 1000
+            properties=ObstacleProperties(
+                hardness=100.0, friction=2.0
+            ),  # 100 5.0 # 1000
             all_mesh=obstacle_meshes,
         ),
         simulation_config=simulation_config,
@@ -819,7 +838,9 @@ def all_train(td, sc):
                 normals = [0.0, 0.0, 0.0]
                 normals[forces_dim] = -forces_dir
                 if normals_dim_plus != 0:
-                    normals[(forces_dim + np.abs(normals_dim_plus)) % 3] = np.sign(normals_dim_plus)
+                    normals[(forces_dim + np.abs(normals_dim_plus)) % 3] = np.sign(
+                        normals_dim_plus
+                    )
                 scale_forces = scale_forces_list[i % len(scale_forces_list)]
                 i += 1
                 name = f"bunny_train_scale_forces:{scale_forces}_forces_and_nodes:{forces}_obstacle_normals:{normals}"
@@ -897,7 +918,7 @@ def all_validation(td, sc):
                 bunny_obstacles(
                     mesh_density=td.mesh_density,
                     scale=1,
-                    final_time=8.0,
+                    final_time=4.0,  # 8.0,
                     simulation_config=sc,
                     scale_forces=5.0,
                 )

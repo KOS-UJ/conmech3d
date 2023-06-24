@@ -82,7 +82,9 @@ def get_expansion_temp_scenarios(mesh_density, final_time):
         default_temp_body_prop,
         get_temp_body_prop(
             thermal_expansion_coeff=default_thermal_expansion_coefficients,
-            thermal_conductivity_coeff=np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]]),
+            thermal_conductivity_coeff=np.array(
+                [[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]]
+            ),
         ),
         get_temp_body_prop(
             thermal_expansion_coeff=default_thermal_expansion_coefficients,
@@ -150,7 +152,9 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
         mesh_density=[mesh_density],
     )
 
-    thermal_expansion_coefficients = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    thermal_expansion_coefficients = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    )
     thermal_conductivity_coefficients = np.array(
         [[0.1, 0.0, 0.0], [0.0, 0.1, 0.0], [0.0, 0.0, 0.1]]
     )
@@ -178,7 +182,8 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
             schedule=Schedule(final_time=final_time, time_step=0.01),
             forces_function=f_rotate_3d,
             obstacle=Obstacle(
-                np.array([[[-1.0, 0.0, 1.0]], [[2.0, 0.0, 0.0]]]), default_temp_obstacle_prop
+                np.array([[[-1.0, 0.0, 1.0]], [[2.0, 0.0, 0.0]]]),
+                default_temp_obstacle_prop,
             ),
             heat_function=np.array([0]),
             simulation_config=simulation_config,
@@ -195,7 +200,8 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
             schedule=Schedule(final_time=final_time, time_step=0.01),
             forces_function=f_rotate_3d,
             obstacle=Obstacle(
-                np.array([[[-1.0, 0.0, 1.0]], [[2.0, 0.0, 0.0]]]), default_temp_obstacle_prop
+                np.array([[[-1.0, 0.0, 1.0]], [[2.0, 0.0, 0.0]]]),
+                default_temp_obstacle_prop,
             ),
             heat_function=np.array([0]),
             simulation_config=simulation_config,
@@ -215,7 +221,9 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
         ),
     ]
 
-    constitutive_temp_scenarios = get_constitutive_temp_scenarios(mesh_density, final_time)
+    constitutive_temp_scenarios = get_constitutive_temp_scenarios(
+        mesh_density, final_time
+    )
     expansion_temp_scenarios = get_expansion_temp_scenarios(mesh_density, final_time)
 
     all_scenarios = [

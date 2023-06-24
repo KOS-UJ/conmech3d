@@ -115,7 +115,11 @@ class DynamicVelocityStatement(Statement):
 
         A = -1 * self.body.matrices.elasticity @ var.displacement
 
-        A += (1 / var.time_step) * self.body.matrices.acceleration_operator @ var.velocity
+        A += (
+            (1 / var.time_step)
+            * self.body.matrices.acceleration_operator
+            @ var.velocity
+        )
 
         self.right_hand_side = self.body.get_integrated_forces_vector_np() + A
 
@@ -170,7 +174,9 @@ class PiezoelectricStatement(Statement):
 
     def update_left_hand_side(self, var):
         ind = self.body.nodes_count
-        self.left_hand_side = jxh.to_dense_np(self.body.matrices.permittivity[:ind, :ind])
+        self.left_hand_side = jxh.to_dense_np(
+            self.body.matrices.permittivity[:ind, :ind]
+        )
 
     def update_right_hand_side(self, var):
         assert var.displacement is not None

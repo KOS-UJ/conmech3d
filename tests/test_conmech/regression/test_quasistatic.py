@@ -170,7 +170,9 @@ def generate_test_suits():
 
 
 @pytest.mark.parametrize("setup, expected_displacement_vector", generate_test_suits())
-def test_global_optimization_solver(solving_method, setup, expected_displacement_vector):
+def test_global_optimization_solver(
+    solving_method, setup, expected_displacement_vector
+):
     # TODO: #65 Duplicated neumann node  in old boundary construction
     runner = TimeDependentProblem(setup, solving_method)
     results = runner.solve(

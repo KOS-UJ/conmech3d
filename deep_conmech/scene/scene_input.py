@@ -32,7 +32,9 @@ def get_indices_from_graph_sizes_numba(graph_sizes: List[int]):
 
 def prepare_node_data(data: np.ndarray, nodes_count, add_norm=False):
     approximated_data = jnp.array(data)
-    result = jxh.complete_data_with_zeros(data=approximated_data, nodes_count=nodes_count)
+    result = jxh.complete_data_with_zeros(
+        data=approximated_data, nodes_count=nodes_count
+    )
     if add_norm:
         result = jxh.append_euclidean_norm(result)
     return result
@@ -76,22 +78,23 @@ class SceneInput(SceneRandomized):
                 directional_edges=directional_edges,
             )
 
-        # TODO: Add historical data
-        if reduced:
+        with jax.default_device(jax.devices("cpu")[0]):
+            # TODO: Add historical data
+            if reduced:
+                return jnp.hstack(
+                    (
+                        get_column(scene.input_initial_nodes),  # cached
+                        get_column(scene.input_displacement_old),
+                        get_column(scene.input_velocity_old),
+                        # get_column(scene.input_forces),
+                    )
+                )
             return jnp.hstack(
                 (
-                    get_column(scene.input_initial_nodes),  # cached
-                    get_column(scene.input_displacement_old),
-                    get_column(scene.input_velocity_old),
+                    get_column(scene.input_initial_nodes),
                     # get_column(scene.input_forces),
                 )
             )
-        return jnp.hstack(
-            (
-                get_column(scene.input_initial_nodes),
-                # get_column(scene.input_forces),
-            )
-        )
 
     @mesh_normalization_decorator
     def get_multilayer_edges_data(self, directional_edges):
@@ -109,7 +112,9 @@ class SceneInput(SceneRandomized):
 
         return np.hstack(
             (
-                get_column(self.reduced.input_initial_nodes, self.input_initial_nodes),  # cached
+                get_column(
+                    self.reduced.input_initial_nodes, self.input_initial_nodes
+                ),  # cached
                 # get_column(
                 #     displacement_old_sparse,
                 #     displacement_old_dense,
@@ -124,70 +129,77 @@ class SceneInput(SceneRandomized):
         scene = self.reduced if reduced else self
 
         def prepare_nodes(data):
-            return jax.jit(prepare_node_data, static_argnames=["add_norm", "nodes_count"])(
+            return jax.jit(
+                prepare_node_data, static_argnames=["add_norm", "nodes_count"]
+            )(
                 data=data,
                 add_norm=True,
                 nodes_count=scene.nodes_count,
             )
 
-        boundary_normals = prepare_nodes(scene.get_normalized_boundary_normals_jax())
+        with jax.default_device(jax.devices("cpu")[0]):
+            boundary_normals = prepare_nodes(
+                scene.get_normalized_boundary_normals_jax()
+            )
 
-        # boundary_friction = self.prepare_node_data(
-        #     data=self.get_friction_input(),
-        #     layer_number=layer_number,
-        #     add_norm=True,
-        # )
-        # boundary_normal_response = self.prepare_node_data(
-        #     data=self.get_normal_response_input(),
-        #     layer_number=layer_number,
-        # )
-        # boundary_volume = self.prepare_node_data(
-        #     data=self.get_surface_per_boundary_node(), layer_number=layer_number
-        # )
-        # input_forces = prepare_nodes(scene.input_forces)
-        if reduced:
-            new_displacement = prepare_nodes(self.reduced.norm_by_reduced_lifted_new_displacement)
-            # new_displacement = prepare_nodes(
-            #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
+            # boundary_friction = self.prepare_node_data(
+            #     data=self.get_friction_input(),
+            #     layer_number=layer_number,
+            #     add_norm=True,
             # )
-            return jnp.hstack(
-                (
-                    new_displacement,
-                    # linear_acceleration,
-                    # boundary_normals,
-                    # boundary_friction,
-                    # boundary_normal_response,
-                    # boundary_volume,
-                    # input_forces,
+            # boundary_normal_response = self.prepare_node_data(
+            #     data=self.get_normal_response_input(),
+            #     layer_number=layer_number,
+            # )
+            # boundary_volume = self.prepare_node_data(
+            #     data=self.get_surface_per_boundary_node(), layer_number=layer_number
+            # )
+            # input_forces = prepare_nodes(scene.input_forces)
+            if reduced:
+                new_displacement = prepare_nodes(
+                    self.reduced.norm_by_reduced_lifted_new_displacement
                 )
-            )
-        else:
-            # new_randomized_displacement = self.to_normalized_displacement(0 * self.exact_acceleration) #use old acceleration
-
-            # if self.simulation_config.mode != "net": # TODO: Clean
-            #     def get_random(scale):
-            #         return nph.generate_normal(
-            #             rows=self.nodes_count,
-            #             columns=self.dimension,
-            #             sigma=scale,
-            #         )
-
-            #     randomization = get_random(scale= (scene.time_step**2))
-            #     new_randomized_displacement += randomization
-
-            return jnp.hstack(
-                # TODO: Add previous accelerations
-                (
-                    # prepare_nodes(new_randomized_displacement),
-                    # new_lowered_displacement,
-                    # linear_acceleration,
-                    0 * boundary_normals,
-                    # boundary_friction,
-                    # boundary_normal_response,
-                    # boundary_volume,
-                    # input_forces,
+                # new_displacement = prepare_nodes(
+                #     scene.to_normalized_displacement_rotated_displaced(scene.lifted_acceleration)
+                # )
+                return jnp.hstack(
+                    (
+                        new_displacement,
+                        # linear_acceleration,
+                        # boundary_normals,
+                        # boundary_friction,
+                        # boundary_normal_response,
+                        # boundary_volume,
+                        # input_forces,
+                    )
                 )
-            )
+            else:
+                # new_randomized_displacement = self.to_normalized_displacement(0 * self.exact_acceleration) #use old acceleration
+
+                # if self.simulation_config.mode != "net": # TODO: Clean
+                #     def get_random(scale):
+                #         return nph.generate_normal(
+                #             rows=self.nodes_count,
+                #             columns=self.dimension,
+                #             sigma=scale,
+                #         )
+
+                #     randomization = get_random(scale= (scene.time_step**2))
+                #     new_randomized_displacement += randomization
+
+                return jnp.hstack(
+                    # TODO: Add previous accelerations
+                    (
+                        # prepare_nodes(new_randomized_displacement),
+                        # new_lowered_displacement,
+                        # linear_acceleration,
+                        0 * boundary_normals,
+                        # boundary_friction,
+                        # boundary_normal_response,
+                        # boundary_volume,
+                        # input_forces,
+                    )
+                )
 
     @mesh_normalization_decorator
     def get_multilayer_edges_with_data(self, link: MeshLayerLinkData):
@@ -210,7 +222,7 @@ class SceneInput(SceneRandomized):
         return edges_index, edges_data, closest_nodes
 
     @mesh_normalization_decorator
-    def get_features_data(self, layer_number: int = 0, to_cpu=False):
+    def get_features_data(self, layer_number: int = 0):
         # edge_index_torch, edge_attr = remove_self_loops(
         #    self.contiguous_edges_torch, self.edges_data_torch
         # )
@@ -224,7 +236,9 @@ class SceneInput(SceneRandomized):
             edge_number=torch.tensor([scene.edges_number]),
             layer_number=torch.tensor([layer_number]),
             pos=thh.to_torch_set_precision(scene.normalized_initial_nodes),
-            x=thh.convert_jax_to_tensor_set_precision(self.get_nodes_data(reduced=reduced)),
+            x=thh.convert_jax_to_tensor_set_precision(
+                self.get_nodes_data(reduced=reduced)
+            ),
             # pin_memory=True,
             # num_workers=1
         )
@@ -255,15 +269,11 @@ class SceneInput(SceneRandomized):
         )  # T.OneHotDegree(),
         transform(data)
         """
-        if to_cpu:
-            data.x = data.x.cpu()
-            data.edge_attr = data.edge_attr.cpu()
 
         return data
 
     @mesh_normalization_decorator
-    def get_target_data(self, to_cpu=False):
-        _ = to_cpu
+    def get_target_data(self):
         target_data = TargetData()
         # new_norm_lowered_displacement = self.lower_displacement_from_position(
         #     self.reduced.norm_by_reduced_lifted_new_displacement
@@ -273,7 +283,9 @@ class SceneInput(SceneRandomized):
             self.norm_by_reduced_lifted_new_displacement
         )  # lower and rotate
 
-        target_data.last_displacement_step = thh.to_double(self.get_last_displacement_step())
+        target_data.last_displacement_step = thh.to_double(
+            self.get_last_displacement_step()
+        )
         ###
 
         skinning_acceleration = np.array(
@@ -283,6 +295,14 @@ class SceneInput(SceneRandomized):
             self.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration)
         )
 
+        print("NORM NORMAL:", np.linalg.norm(target_data.normalized_new_displacement))
+        print(
+            "NORM DIFF:",
+            np.linalg.norm(
+                target_data.normalized_new_displacement
+                - target_data.normalized_new_displacement_skinning
+            ),
+        )
         return target_data
 
     @staticmethod
@@ -342,7 +362,10 @@ class SceneInput(SceneRandomized):
     @staticmethod
     def get_edges_data_description(dim):
         desc = []
-        for attr in ["initial_nodes", "displacement_old"]:  # , "velocity_old", "forces"]:
+        for attr in [
+            "initial_nodes",
+            "displacement_old",
+        ]:  # , "velocity_old", "forces"]:
             for i in range(dim):
                 desc.append(f"{attr}_{i}")
             desc.append(f"{attr}_norm")

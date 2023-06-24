@@ -84,10 +84,12 @@ def query_hasher_numba(
     # get all points from cells
     query_size = 0
     for c1 in range(
-        int((query_node[0] - max_dist) / spacing), int((query_node[0] + max_dist) / spacing) + 1
+        int((query_node[0] - max_dist) / spacing),
+        int((query_node[0] + max_dist) / spacing) + 1,
     ):
         for c2 in range(
-            int((query_node[1] - max_dist) / spacing), int((query_node[1] + max_dist) / spacing) + 1
+            int((query_node[1] - max_dist) / spacing),
+            int((query_node[1] + max_dist) / spacing) + 1,
         ):
             for c3 in range(
                 int((query_node[2] - max_dist) / spacing),
@@ -113,7 +115,11 @@ def cell_coord(node, spacing):
 
 def custom_hash(cell, table_size):
     return (
-        abs((cell[..., 0] * 92837111) ^ (cell[..., 1] * 689287499) ^ (cell[..., 2] * 283923481))
+        abs(
+            (cell[..., 0] * 92837111)
+            ^ (cell[..., 1] * 689287499)
+            ^ (cell[..., 2] * 283923481)
+        )
         % table_size
     )
 

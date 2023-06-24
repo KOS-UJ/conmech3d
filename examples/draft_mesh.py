@@ -29,9 +29,11 @@ def main():
         nodes, elements = get_nodes_and_elements(geom, dimension=3)
         print(len(nodes))
 
-        boundary_surfaces, boundary_internal_indices, boundary_indices = get_boundary_surfaces(
-            elements
-        )
+        (
+            boundary_surfaces,
+            boundary_internal_indices,
+            boundary_indices,
+        ) = get_boundary_surfaces(elements)
         boundary_surface_nodes = nodes[boundary_surfaces]
         fig = plt.figure(figsize=(5, 4))
         ax = fig.add_subplot(111, projection="3d")

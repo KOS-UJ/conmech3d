@@ -17,7 +17,8 @@ class State:
     def set_displacement(self, displacement_vector: np.ndarray, time: float = 0):
         self.displacement = displacement_vector.reshape((2, -1)).T
         self.displaced_nodes[: self.body.nodes_count, :2] = (
-            self.body.initial_nodes[: self.body.nodes_count, :2] + self.displacement[:, :2]
+            self.body.initial_nodes[: self.body.nodes_count, :2]
+            + self.displacement[:, :2]
         )
         self.time = time
 
@@ -29,7 +30,8 @@ class State:
             dt = time - self.time
             self.displacement += dt * self.velocity
             self.displaced_nodes[: self.body.nodes_count, :2] = (
-                self.body.initial_nodes[: self.body.nodes_count, :2] + self.displacement[:, :2]
+                self.body.initial_nodes[: self.body.nodes_count, :2]
+                + self.displacement[:, :2]
             )
         self.time = time
 

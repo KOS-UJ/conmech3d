@@ -60,7 +60,9 @@ class ProblemSolver:
         else:
             time_step = 0
 
-        grid_width = (setup.grid_height / setup.elements_number[0]) * setup.elements_number[1]
+        grid_width = (
+            setup.grid_height / setup.elements_number[0]
+        ) * setup.elements_number[1]
 
         self.body = BodyForces(
             mesh_prop=MeshProperties(
@@ -89,7 +91,8 @@ class ProblemSolver:
             boundaries_description=setup.boundaries,
         )
         self.body.set_permanent_forces_by_functions(
-            inner_forces_function=setup.inner_forces, outer_forces_function=setup.outer_forces
+            inner_forces_function=setup.inner_forces,
+            outer_forces_function=setup.outer_forces,
         )
         self.setup = setup
 
@@ -184,7 +187,9 @@ class ProblemSolver:
             else:
                 raise ValueError(f"Unknown coordinates: {self.coordinates}")
 
-    def find_solution(self, state, solution, validator, *, verbose=False, **kwargs) -> np.ndarray:
+    def find_solution(
+        self, state, solution, validator, *, verbose=False, **kwargs
+    ) -> np.ndarray:
         quality = 0
         # solution = state[self.coordinates].reshape(2, -1)  # TODO #23
         solution = self.step_solver.solve(solution, **kwargs)
@@ -193,7 +198,9 @@ class ProblemSolver:
         self.print_iteration_info(quality, validator.error_tolerance, verbose)
         return solution
 
-    def find_solution_uzawa(self, solution, solution_t) -> Tuple[np.ndarray, np.ndarray]:
+    def find_solution_uzawa(
+        self, solution, solution_t
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # TODO #95
         norm = np.inf
         old_solution = solution.copy().reshape(-1, 1).squeeze()
@@ -256,7 +263,8 @@ class ProblemSolver:
         )
         self.second_step_solver.v_vector = velocity.reshape(-1)
         self.second_step_solver.u_vector = (
-            old_u_vector + self.second_step_solver.time_step * self.second_step_solver.v_vector
+            old_u_vector
+            + self.second_step_solver.time_step * self.second_step_solver.v_vector
         )
         self.step_solver.p_vector = solution_t
         self.second_step_solver.p_vector = solution_t
@@ -293,14 +301,18 @@ class Static(ProblemSolver):
 
     # super class method takes **kwargs, so signatures are consistent
     # pylint: disable=arguments-differ
-    def solve(self, *, initial_displacement: Callable, verbose: bool = False, **kwargs) -> State:
+    def solve(
+        self, *, initial_displacement: Callable, verbose: bool = False, **kwargs
+    ) -> State:
         """
         :param initial_displacement: for the solver
         :param verbose: show prints
         :return: state
         """
         state = State(self.body)
-        state.displacement = initial_displacement(self.body.initial_nodes[: self.body.nodes_count])
+        state.displacement = initial_displacement(
+            self.body.initial_nodes[: self.body.nodes_count]
+        )
 
         self.step_solver.u_vector[:] = state.displacement.ravel().copy()
         self.run(state, n_steps=1, verbose=verbose, **kwargs)
@@ -356,7 +368,9 @@ class TimeDependent(ProblemSolver):
         state.displacement[:] = initial_displacement(
             self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
+        state.velocity[:] = initial_velocity(
+            self.body.initial_nodes[: self.body.nodes_count]
+        )
 
         self.step_solver.u_vector[:] = state.displacement.ravel().copy()
         self.step_solver.v_vector[:] = state.velocity.ravel().copy()
@@ -424,8 +438,12 @@ class TemperatureTimeDependent(ProblemSolver):
         state.displacement[:] = initial_displacement(
             self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
-        state.temperature[:] = initial_temperature(self.body.initial_nodes[: self.body.nodes_count])
+        state.velocity[:] = initial_velocity(
+            self.body.initial_nodes[: self.body.nodes_count]
+        )
+        state.temperature[:] = initial_temperature(
+            self.body.initial_nodes[: self.body.nodes_count]
+        )
 
         solution = state.velocity.reshape(2, -1)
         solution_t = state.temperature
@@ -445,7 +463,9 @@ class TemperatureTimeDependent(ProblemSolver):
                 done += 1
                 print(f"{done/n_steps*100:.2f}%", end="\r")
                 self.step_solver.current_time += self.step_solver.time_step
-                self.second_step_solver.current_time += self.second_step_solver.time_step
+                self.second_step_solver.current_time += (
+                    self.second_step_solver.time_step
+                )
 
                 # solution = self.find_solution(self.step_solver, state, solution, self.validator,
                 #                               verbose=verbose)
@@ -514,7 +534,9 @@ class PiezoelectricTimeDependent(ProblemSolver):
         state.displacement[:] = initial_displacement(
             self.body.initial_nodes[: self.body.nodes_count]
         )
-        state.velocity[:] = initial_velocity(self.body.initial_nodes[: self.body.nodes_count])
+        state.velocity[:] = initial_velocity(
+            self.body.initial_nodes[: self.body.nodes_count]
+        )
         state.electric_potential[:] = initial_electric_potential(
             self.body.initial_nodes[: self.body.nodes_count]
         )
@@ -538,7 +560,9 @@ class PiezoelectricTimeDependent(ProblemSolver):
                 done += 1
                 print(f"{done/n_steps*100:.2f}%", end="\r")
                 self.step_solver.current_time += self.step_solver.time_step
-                self.second_step_solver.current_time += self.second_step_solver.time_step
+                self.second_step_solver.current_time += (
+                    self.second_step_solver.time_step
+                )
 
                 solution, solution_t = self.find_solution_uzawa(solution, solution_t)
 

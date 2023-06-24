@@ -87,12 +87,12 @@ def make_equation(jn, jt, h_functional):
             )
 
             edge_len = nph.length(n_0, n_1)
-            j_x = edge_len * 0.5 * (jn(um_normal, normal_vector[0])) + h_functional(um_normal) * jt(
-                um_tangential, v_tau_0
-            )
-            j_y = edge_len * 0.5 * (jn(um_normal, normal_vector[1])) + h_functional(um_normal) * jt(
-                um_tangential, v_tau_1
-            )
+            j_x = edge_len * 0.5 * (jn(um_normal, normal_vector[0])) + h_functional(
+                um_normal
+            ) * jt(um_tangential, v_tau_0)
+            j_y = edge_len * 0.5 * (jn(um_normal, normal_vector[1])) + h_functional(
+                um_normal
+            ) * jt(um_tangential, v_tau_1)
 
             if n_id_0 < offset:
                 contact_vector[n_id_0] += j_x
@@ -162,7 +162,9 @@ def make_cost_functional(
     @numba.njit()
     def cost_functional(u_vector, nodes, contact_boundary, lhs, rhs, u_vector_old, dt):
         ju = contact_cost_functional(u_vector, u_vector_old, nodes, contact_boundary)
-        result = 0.5 * np.dot(np.dot(lhs, u_vector), u_vector) - np.dot(rhs, u_vector) + ju
+        result = (
+            0.5 * np.dot(np.dot(lhs, u_vector), u_vector) - np.dot(rhs, u_vector) + ju
+        )
         result = np.asarray(result).ravel()
         return result
 
@@ -219,7 +221,9 @@ def make_cost_functional_2023(  # TODO #97
     def cost_functional(v_vector, nodes, contact_boundary, lhs, rhs, u_vector_old, dt):
         u_vector = u_vector_old + dt * v_vector
         ju = contact_cost_functional(v_vector, u_vector, nodes, contact_boundary)
-        result = 0.5 * np.dot(np.dot(lhs, v_vector), v_vector) - np.dot(rhs, v_vector) + ju
+        result = (
+            0.5 * np.dot(np.dot(lhs, v_vector), v_vector) - np.dot(rhs, v_vector) + ju
+        )
         result = np.asarray(result).ravel()
         return result
 
@@ -261,7 +265,8 @@ def make_cost_functional_temperature(
                 # cost += edgeLength * (hn(uNmL, tmL)
                 #      + h(np.linalg.norm(np.asarray((uTmLx, uTmLy)))) * ht(uNmL, tmL))
                 cost += nph.length(n_0, n_1) * (
-                    h_functional(np.linalg.norm(um_tangential)) - heat_exchange(temp_m[0])
+                    h_functional(np.linalg.norm(um_tangential))
+                    - heat_exchange(temp_m[0])
                 )
         return cost
 
