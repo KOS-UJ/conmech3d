@@ -181,9 +181,18 @@ class Calculator:
                 reduced_exact_acceleration=scene.reduced.exact_acceleration,
             )
 
-            norm_exact_new_displacement = scene.get_norm_by_reduced_lifted_new_displacement(scene.exact_acceleration)
+            norm_exact_new_displacement = (
+                scene.get_norm_by_reduced_lifted_new_displacement(
+                    scene.exact_acceleration
+                )
+            )
             print("NORM NORMAL:", np.linalg.norm(norm_exact_new_displacement))
-            print("NORM DIFF:", np.linalg.norm(norm_exact_new_displacement-scene.norm_lifted_new_displacement))
+            print(
+                "NORM DIFF:",
+                np.linalg.norm(
+                    norm_exact_new_displacement - scene.norm_lifted_new_displacement
+                ),
+            )
 
         return scene.exact_acceleration, None
         # if dense_path is None:
@@ -229,11 +238,19 @@ class Calculator:
         skinning_acceleration = np.array(
             scene.lower_acceleration_from_position(scene.reduced.lifted_acceleration)
         )
-        normalized_new_displacement_skinning = scene.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration)
+        normalized_new_displacement_skinning = (
+            scene.get_norm_by_reduced_lifted_new_displacement(skinning_acceleration)
+        )
 
         print("NORM NORMAL:", np.linalg.norm(scene.norm_lifted_new_displacement))
-        print("NORM DIFF:", np.linalg.norm(scene.norm_lifted_new_displacement - normalized_new_displacement_skinning))
-        
+        print(
+            "NORM DIFF:",
+            np.linalg.norm(
+                scene.norm_lifted_new_displacement
+                - normalized_new_displacement_skinning
+            ),
+        )
+
         return np.array(exact_acceleration), None
 
     @staticmethod

@@ -296,7 +296,13 @@ class SceneInput(SceneRandomized):
         )
 
         print("NORM NORMAL:", np.linalg.norm(target_data.normalized_new_displacement))
-        print("NORM DIFF:", np.linalg.norm(target_data.normalized_new_displacement - target_data.normalized_new_displacement_skinning))
+        print(
+            "NORM DIFF:",
+            np.linalg.norm(
+                target_data.normalized_new_displacement
+                - target_data.normalized_new_displacement_skinning
+            ),
+        )
         return target_data
 
     @staticmethod

@@ -737,7 +737,7 @@ def bunny_obstacles(
 ):
     _, _, _ = scale, tag, arg
     obstacle_meshes = []
-    for i in range(1,4):
+    for i in range(1, 4):
         if i % 2 == 1:
             shift = 0
             mesh_type = "slide_left"
@@ -918,7 +918,7 @@ def all_validation(td, sc):
                 bunny_obstacles(
                     mesh_density=td.mesh_density,
                     scale=1,
-                    final_time=4.0, # 8.0,
+                    final_time=4.0,  # 8.0,
                     simulation_config=sc,
                     scale_forces=5.0,
                 )

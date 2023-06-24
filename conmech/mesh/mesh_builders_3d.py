@@ -108,7 +108,7 @@ def get_pygmsh_twist(mesh_prop: MeshProperties):
 
 def get_pygmsh_slide(mesh_prop):
     with pygmsh.geo.Geometry() as geom:
-        depth = 0.8 #0.5
+        depth = 0.8  # 0.5
         width = 1.0
         thickness = 0.5
         slope = 0.4

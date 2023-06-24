@@ -45,6 +45,7 @@ def run_simulation(mode):
         save_all=True,
     )
 
+
 def get_error(simulation_1, simulation_2, index, key):
     return RMSE(simulation_1[index][key], simulation_2[index][key])
 
@@ -67,7 +68,11 @@ def compare_latest(label=None):
     for key in [
         "norm_lifted_new_displacement",
         "recentered_norm_lifted_new_displacement",
-        'displacement_old', 'exact_acceleration', 'normalized_nodes', 'lifted_acceleration']:
+        "displacement_old",
+        "exact_acceleration",
+        "normalized_nodes",
+        "lifted_acceleration",
+    ]:
         errors_skinning = []
         errors_net = []
         for index in tqdm(range(simulation_len)):

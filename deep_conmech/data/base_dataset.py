@@ -552,7 +552,7 @@ class BaseDataset:
             scene.exact_acceleration
         )
         scene.reduced.exact_acceleration = scene.reduced.lifted_acceleration
-        
+
         return scene, scene.exact_acceleration
 
     def safe_save_scene(self, scene, data_path: str):
@@ -576,7 +576,7 @@ class BaseDataset:
     @property
     def _len_jax(self):
         # if not 'validation' in self.main_directory:
-            # return 50
+        # return 50
         return self.data_count // self.device_count
 
     def __getitem__(self, index: int):

@@ -120,7 +120,9 @@ def _get_rotation_jax(displacement, dx_big):
             success=iteration < max_iter,
         )
 
-    state = RotationState(rotation=deform_grad, norm=jnp.inf, iteration=0, success=True) # norm=0
+    state = RotationState(
+        rotation=deform_grad, norm=jnp.inf, iteration=0, success=True
+    )  # norm=0
     state = lax.while_loop(
         lambda state: (state.norm > max_norm) & (state.iteration < max_iter),
         body,

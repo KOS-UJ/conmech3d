@@ -107,7 +107,6 @@ class TrainingConfig(Config):
     profile_training: bool = False
 
 
-
 def get_train_config(shell, mode):
     config = TrainingConfig(shell=shell)
     config.sc = SimulationConfig(
