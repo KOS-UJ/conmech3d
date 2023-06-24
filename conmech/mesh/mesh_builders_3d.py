@@ -108,46 +108,46 @@ def get_pygmsh_twist(mesh_prop: MeshProperties):
 
 def get_pygmsh_slide(mesh_prop):
     with pygmsh.geo.Geometry() as geom:
-        width = 0.5
-        depth = 1.0
-        thickness = 0.3  # 0.4
-        slope = 0.3
+        depth = 0.8 #0.5
+        width = 1.0
+        thickness = 0.5
+        slope = 0.4
 
-        height = slope * depth
+        height = slope * (2 * depth)
         if "left" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-depth, -width, -height],
-                    [depth, -width, -height],
-                    [depth, width, height],
-                    [-depth, width, height],
+                    [-width, -depth, -height],
+                    [width, -depth, -height],
+                    [width, depth, height],
+                    [-width, depth, height],
                 ]
             )
         elif "right" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-depth, -width, height],
-                    [depth, -width, height],
-                    [depth, width, -height],
-                    [-depth, width, -height],
+                    [-width, -depth, height],
+                    [width, -depth, height],
+                    [width, depth, -height],
+                    [-width, depth, -height],
                 ]
             )
         elif "up" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-depth, -height, -width],
-                    [depth, -height, -width],
-                    [depth, height, width],
-                    [-depth, height, width],
+                    [-depth, -width, -height],
+                    [depth, -width, height],
+                    [depth, width, height],
+                    [-depth, width, -height],
                 ]
             )
         elif "down" in mesh_prop.mesh_type:
             poly = geom.add_polygon(
                 [
-                    [-depth, -height, width],
-                    [depth, -height, width],
-                    [depth, height, -width],
-                    [-depth, height, -width],
+                    [-width, -height, depth],
+                    [width, -height, depth],
+                    [width, height, -depth],
+                    [-width, height, -depth],
                 ]
             )
         else:

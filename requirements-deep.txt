@@ -1,5 +1,5 @@
-# --find-links https://download.pytorch.org/whl/cpu
-torch #==2.0.1
+--find-links https://download.pytorch.org/whl/cpu
+torch==2.0.1
 
 flax==0.6.10
 orbax-checkpoint==0.2.5

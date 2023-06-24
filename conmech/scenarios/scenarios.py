@@ -737,23 +737,20 @@ def bunny_obstacles(
 ):
     _, _, _ = scale, tag, arg
     obstacle_meshes = []
-    for i in [1]:  # range(1,5):
+    for i in range(1,4):
+        if i % 2 == 1:
+            shift = 0
+            mesh_type = "slide_left"
+        else:
+            shift = -1.5
+            mesh_type = "slide_right"
         obstacle_meshes.append(
             MeshProperties(
                 dimension=3,
-                mesh_type="slide_left",
+                mesh_type=mesh_type,
                 scale=[1],
                 mesh_density=[16],
-                initial_position=[0, 0, -i],
-            )
-        )
-        obstacle_meshes.append(
-            MeshProperties(
-                dimension=3,
-                mesh_type="slide_right",
-                scale=[1],
-                mesh_density=[16],
-                initial_position=[0, -1, -(i + 1.2)],
+                initial_position=[0, shift, -1.6 * i],
             )
         )
 
@@ -921,7 +918,7 @@ def all_validation(td, sc):
                 bunny_obstacles(
                     mesh_density=td.mesh_density,
                     scale=1,
-                    final_time=8.0,
+                    final_time=4.0, # 8.0,
                     simulation_config=sc,
                     scale_forces=5.0,
                 )

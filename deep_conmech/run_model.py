@@ -27,7 +27,7 @@ from deep_conmech.data.synthetic_dataset import SyntheticDataset
 from deep_conmech.graph.model_jax import GraphModelDynamicJax, save_tf_model
 from deep_conmech.graph.net_jax import CustomGraphNetJax
 from deep_conmech.helpers import dch
-from deep_conmech.training_config import TrainingConfig, TrainingData
+from deep_conmech.training_config import TrainingConfig, TrainingData, get_train_config
 
 
 def setup_distributed(rank: int, world_size: int):
@@ -285,19 +285,8 @@ def main(args: Namespace):
     # dch.cuda_launch_blocking()
     # torch.autograd.set_detect_anomaly(True)
     # print(numba.cuda.gpus)
-    config = TrainingConfig(shell=args.shell)
-    config.sc = SimulationConfig(
-        use_normalization=False,
-        use_linear_solver=False,
-        use_green_strain=True,
-        use_nonconvex_friction_law=False,
-        use_constant_contact_integral=False,  # True,  # False, ##############
-        use_lhs_preconditioner=False,
-        with_self_collisions=True,
-        mesh_layer_proportion=4,  # 2 4
-        use_pca=False,
-        mode="normal",
-    )
+
+    config = get_train_config(shell=args.shell, mode="normal")
 
     # dch.set_torch_sharing_strategy()
     dch.set_memory_limit(config=config)

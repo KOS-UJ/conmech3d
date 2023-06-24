@@ -173,11 +173,8 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     else:
         blender_data += (None,)
 
-    for (
-        obs
-    ) in (
-        scene.mesh_obstacles
-    ):  # TODO: Mesh obstacles and temperature - create dataclass
+    for obs in scene.mesh_obstacles:  
+        # TODO: Mesh obstacles and temperature - create dataclass
         blender_data += (obs.boundary_nodes, obs.boundaries.boundary_surfaces)
 
     pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)

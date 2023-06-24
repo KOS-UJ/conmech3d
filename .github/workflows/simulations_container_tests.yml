@@ -1,4 +1,4 @@
-name: Tests of simulatios in container
+name: Simulatios in a container
 
 on:
   push:

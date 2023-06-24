@@ -355,7 +355,7 @@ class GraphModelDynamicJax:
 
         data = [get_layer_list_and_target_data(bd) for bd in batch_data]
 
-        compare = True
+        compare = False
 
         all_target_data = [
             data[d][1].normalized_new_displacement for d in range(devices_count)

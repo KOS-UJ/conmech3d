@@ -321,6 +321,7 @@ class BaseDataset:
             "dense_edges": FeaturesStatistics(),
             "target_normalized_new_displacement": FeaturesStatistics(),
         }
+        # return statistics
 
         for graph_data in cmh.get_tqdm(
             dataloader, config=self.config, desc="Calculating dataset mean and max abs"
@@ -533,18 +534,25 @@ class BaseDataset:
         #     scene.reduced.exact_acceleration
         # )
 
-        scene.exact_acceleration, _ = self.solve_function(
-            scene=scene,
-            initial_a=scene.exact_acceleration,
-            energy_functions=energy_functions,
-        )
+        dense_path = cmh.get_base_for_comarison()
+        if dense_path is not None:
+            (
+                scene.exact_acceleration,
+                _,
+            ) = cmh.get_exact_acceleration(scene=scene, path=dense_path)
+        else:
+            scene.exact_acceleration, _ = self.solve_function(
+                scene=scene,
+                initial_a=scene.exact_acceleration,
+                energy_functions=energy_functions,
+            )
         scene.lifted_acceleration = scene.exact_acceleration
 
         scene.reduced.lifted_acceleration = scene.lift_acceleration_from_position(
             scene.exact_acceleration
         )
         scene.reduced.exact_acceleration = scene.reduced.lifted_acceleration
-
+        
         return scene, scene.exact_acceleration
 
     def safe_save_scene(self, scene, data_path: str):
@@ -568,7 +576,7 @@ class BaseDataset:
     @property
     def _len_jax(self):
         # if not 'validation' in self.main_directory:
-        #     return 50
+            # return 50
         return self.data_count // self.device_count
 
     def __getitem__(self, index: int):

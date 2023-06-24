@@ -104,10 +104,8 @@ class RotationState(NamedTuple):
 
 @jax.jit
 def _get_rotation_jax(displacement, dx_big):
-    max_iter = 30
+    max_iter = 100
     max_norm = 1e-4
-    # max_iter = 100
-    # max_norm = 5e-4
     deform_grad = _get_deform_grad(displacement, dx_big)
 
     def body(state):
@@ -122,8 +120,7 @@ def _get_rotation_jax(displacement, dx_big):
             success=iteration < max_iter,
         )
 
-    state = RotationState(rotation=deform_grad, norm=0, iteration=0, success=True)
-    # state = RotationState(rotation=deform_grad, norm=jnp.inf, iteration=0, success=True)
+    state = RotationState(rotation=deform_grad, norm=jnp.inf, iteration=0, success=True) # norm=0
     state = lax.while_loop(
         lambda state: (state.norm > max_norm) & (state.iteration < max_iter),
         body,
