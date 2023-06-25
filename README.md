@@ -1,5 +1,5 @@
 <div align="center">
-<img src="samples/logo.svg" alt="logo" width="20%"></img>
+<img src="samples/logo.svg" alt="logo" width="25%"></img>
 
 # conmech3d: simulations of contact mechanics in Python using [JAX](https://github.com/google/jax/tree/main)
 </div>
@@ -9,7 +9,7 @@
 
 Contact mechanics is the subfield of physics that models the behavior bodies that come into contact with each other. Most of such problems cannot be solved analytically and require numerical procedure, such as the classical finite element method (FEM).
 
-Conmech3d is an implementation of FEM for soft-body mechanical contact problems. The project is almost entirely self-contained and is mainly aimed at research and didactic applications. Conmech3d is written in Python and uses [JAX](https://github.com/google/jax/tree/main), a library for high-performance numerical computing. Besides basic Python libraries, such as [Numpy](https://github.com/numpy/numpy) and [Scipy](https://scipy.org/), it also employs [pygmsh](https://github.com/meshpro/pygmsh) for mesh construction and [Numba](https://github.com/numba/numba) along with [Cython](https://github.com/cython/cython) to increase the speed of initial setup. Various options for visualization of simulation results are included, such as [Blender](https://github.com/blender/blender), [Three.js](https://github.com/mrdoob/three.js/) and [Matplotlib](https://github.com/matplotlib/matplotlib)
+Conmech3d is an implementation of FEM for soft-body mechanical contact problems. The project is almost entirely self-contained and mainly aimed at research and didactic applications. Conmech3d is written in Python and uses [JAX](https://github.com/google/jax/tree/main), a library for high-performance numerical computing. Besides basic Python libraries, such as [Numpy](https://github.com/numpy/numpy) and [Scipy](https://scipy.org/), it also employs [pygmsh](https://github.com/meshpro/pygmsh) for mesh construction and [Numba](https://github.com/numba/numba) along with [Cython](https://github.com/cython/cython) to increase the speed of initial setup. Various options for visualization of simulation results are included, such as [Blender](https://github.com/blender/blender), [Three.js](https://github.com/mrdoob/three.js/) and [Matplotlib](https://github.com/matplotlib/matplotlib)
 
 Experimental implementations of model reduction techniques that include tetrahedral skinning used in computer graphics and a new approach using Graph Neural Network are included in this repository.
 <!-- PCA, Flax and Pytorch Geometric-->
