@@ -94,8 +94,6 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
         const output_path = './output';
 
         const fileLoader = new THREE.FileLoader();
-        const speedSlow = 0.1;
-        const speedNormal = 1.;
 
         function animationFrame() {
             return parseInt(animationFrameFloat)
@@ -115,11 +113,9 @@ Based on code by Matthias Müller - Ten Minute Physics, https://www.youtube.com/
             setRunButton(!paused);
         }
         window.speed = () => {
-            if (animationSpeed != speedNormal)
-                animationSpeed = speedNormal;
-            else
-                animationSpeed = speedSlow;
-            // animationSpeed = (animationSpeed % maxSpeed) + step;
+            let maxSpeed = 2.0;
+            let step = 0.5;
+            animationSpeed = (animationSpeed % maxSpeed) + step;
             setHtml("animationSpeed", animationSpeed);
         }
         window.toggleHiglightNodes = async () => {

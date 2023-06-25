@@ -1,16 +1,37 @@
-# conmech3d
+<div align="center">
+<img src="samples/logo.svg" alt="logo" width="25%"></img>
 
-conmech3d is a simulating package written in Python that allows to numerically solve contact mechanics problems. 
+# conmech3d: simulations of contact mechanics in Python using [JAX](https://github.com/google/jax/tree/main)
+</div>
 
-## Description
 
-Contact mechanics describes behaviour of the physical body in contact with the obstacle. Majority of such problems cannot be solved analitically and require numerical procedure. This package implements the Finite Element Method for 3D and 2D bodies and works with static, quasistatic and dynamic problems. It can simulate various physical phenomena, such as friction and obstacle resistance. Additional variables besides displacement, such as the temperature of the body, can be calculated. The project is almost entirely self contained, requires basic Python libraries, [pygmsh](https://github.com/meshpro/pygmsh) along with [Gmsh](https://gmsh.info/) for mesh construction and [Scipy](https://scipy.org/) for solving reformulated problem. The code is modular and can be further extended to include new physical models.
+## What is contact mechanics and conmech3d?
+
+Contact mechanics is the subfield of physics that models the behavior bodies that come into contact with each other. Most of such problems cannot be solved analytically and require numerical procedure, such as the classical finite element method (FEM).
+
+Conmech3d is an implementation of FEM for soft-body mechanical contact problems. The project is almost entirely self-contained and mainly aimed at research and didactic applications. Conmech3d is written in Python and uses [JAX](https://github.com/google/jax/tree/main), a library for high-performance numerical computing. Besides basic Python libraries, such as [Numpy](https://github.com/numpy/numpy) and [Scipy](https://scipy.org/), it also employs [pygmsh](https://github.com/meshpro/pygmsh) for mesh construction and [Numba](https://github.com/numba/numba) along with [Cython](https://github.com/cython/cython) to increase the speed of initial setup. Various options for visualization of simulation results are included, such as [Blender](https://github.com/blender/blender), [Three.js](https://github.com/mrdoob/three.js/) and [Matplotlib](https://github.com/matplotlib/matplotlib)
+
+Experimental implementations of model reduction techniques that include tetrahedral skinning used in computer graphics and a new approach using Graph Neural Network are included in this repository.
+<!-- PCA, Flax and Pytorch Geometric-->
+
+## Features
+* ability to solve both two- and three-dimensional simulations,
+* static, quasistatic, and dynamic problems,
+* a selection of constitutive laws, e.g. linearized elasticity, lineraized viscoelasticity and hiperelasticity,
+* focus on general contact conditions describing friction and normal compliance,
+* inclusion of additional phenomena, such as temperature.
+
+Because Conmech3d is based on [JAX](https://github.com/google/jax/tree/main), it also offers
+* support for simulations on CPU, GPU, and TPU,
+* simple configuration of single (32-bit) and double (64-bit) modes of numerical precision,
+* support for automatic differentiation and applications in machine learning.
+
 
 ## Sample results
 
 | 3D with temperature (Blender) | 3D (three.js) | 2D with temperature (Matplotlib) 
 :-------------------------:|:-------------------------:|:-------------------------:
-<img src="samples/bunny_temperature.gif" width="100%" /> | <img src="samples/bunny_obstacles.gif" width="100%" /> | <img src="samples/circle_roll_temperature.gif" width="100%" />
+<img src="samples/bunny_temperature.gif" width="100%" /> | <img src="samples/armadillo_fall.gif" width="100%" /> | <img src="samples/rectangle_roll.gif" width="100%" />
 <!-- | 3D with temperature (Blender) | 3D |S
 <img src="samples/circle_roll_temperature.gif" width="100%" /> |  <img src="samples/ball_roll_3d.gif" width="100%" /> -->
 
