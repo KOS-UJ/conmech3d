@@ -125,15 +125,15 @@ def get_surface_per_boundary_node_jax(
 
 
 def mesh_normalization_decorator(func: Callable):
-    def inner(self, *args, **kwargs):
-        saved_normalize = self.normalize
-        self.normalize = True
-        if hasattr(self, "reduced"):
-            self.reduced.normalize = True
-        returned_value = func(self, *args, **kwargs)
-        self.normalize = saved_normalize
-        if hasattr(self, "reduced"):
-            self.reduced.normalize = saved_normalize
+    def inner(scene: "BodyPosition", *args, **kwargs):
+        saved_normalize = scene.normalize
+        scene.normalize = True
+        if hasattr(scene, "reduced"):
+            scene.reduced.normalize = True
+        returned_value = func(scene, *args, **kwargs)
+        scene.normalize = saved_normalize
+        if hasattr(scene, "reduced"):
+            scene.reduced.normalize = saved_normalize
         return returned_value
 
     return inner

@@ -7,13 +7,18 @@ from matplotlib.patches import Rectangle
 
 from conmech.helpers.config import Config
 from conmech.plotting import plotter_common
-from conmech.plotting.plotter_common import PlotAnimationConfig, make_animation
+from conmech.plotting.plotter_common import (
+    PlotAnimationConfig,
+    get_recentered_nodes,
+    make_animation,
+)
 from conmech.scene.scene import Scene
 from conmech.scene.scene_temperature import SceneTemperature
+from conmech.state.body_position import mesh_normalization_decorator
 
 
 def get_fig():
-    return plt.figure(figsize=(4, 2))
+    return plt.figure(figsize=(4, 3))
 
 
 def get_axs(fig):
@@ -24,9 +29,8 @@ def get_axs(fig):
 
 def set_perspective(scale, axes):
     axes.set_aspect("equal", "box")
-    padding = 6
-    axes.set_xlim(-padding * scale, 18 * scale)
-    axes.set_ylim(-padding * scale, padding * scale)
+    axes.set_xlim(-3 * scale, 14 * scale)
+    axes.set_ylim(-6 * scale, 6 * scale)
     plotter_common.set_ax(axes)
 
 
@@ -53,11 +57,11 @@ def plot_animation(
         ),
     )
 
-
+@mesh_normalization_decorator
 def plot_frame(
+    scene: Scene,
     fig,
     axs,
-    scene: Scene,
     current_time: float,
     draw_detailed: bool = True,
     t_scale: Optional[np.ndarray] = None,
@@ -80,31 +84,31 @@ def plot_frame(
         position = np.array([-3.7, 4.2]) * scale
         draw_all_sparse(scene, position, axes=axes)
 
-        position = np.array([-6.2, -4.2]) * scale
+        position = np.array([-0.75, -4.2]) * scale
         shift = 2.5 * scale
-        position[0] += shift
-        draw_initial(scene, position, axes=axes)
+        # position[0] += shift
+        # draw_initial(scene, position, axes=axes)
         position[0] += shift
         draw_forces(scene, position, axes=axes)
 
-        position[0] += shift
-        draw_obstacle_resistance_normalized(scene, position, axes=axes)
-        position[0] += shift
+        # position[0] += shift
+        # draw_obstacle_resistance_normalized(scene, position, axes=axes)
+        # position[0] += shift
         # draw_boundary_surfaces_normals(scene, position, axes)
         # position[0] += shift
         # draw_boundary_normals(scene, position, axes)
-        # position[0] += shift
 
+        position[0] += shift
         draw_boundary_resistance_normal(scene, position, axes=axes)
         position[0] += shift
         draw_boundary_resistance_tangential(scene, position, axes=axes)
-        position[0] += shift
-        draw_boundary_v_tangential(scene, position, axes=axes)
-        position[0] += shift
-
-        draw_input_u(scene, position, axes=axes)
-        position[0] += shift
-        draw_input_v(scene, position, axes=axes)
+        # position[0] += shift
+        # draw_boundary_v_tangential(scene, position, axes=axes)
+        
+        # position[0] += shift
+        # draw_input_u(scene, position, axes=axes)
+        # position[0] += shift
+        # draw_input_v(scene, position, axes=axes)
         position[0] += shift
         draw_a(scene, position, axes=axes)
 
@@ -326,15 +330,15 @@ def draw_nodes(nodes, position, color, axes):
 
 
 def draw_forces(scene: Scene, position, axes):
-    return draw_data("F", scene.normalized_inner_forces, scene, position, axes)
+    return draw_data("F", scene.inner_forces, scene, position, axes)
 
 
 def draw_input_u(scene: Scene, position, axes):
-    return draw_data("U", scene.normalized_displacement_old, scene, position, axes)
+    return draw_data("U", scene.displacement_old, scene, position, axes)
 
 
 def draw_input_v(scene: Scene, position, axes):
-    return draw_data("V", scene.normalized_velocity_old, scene, position, axes)
+    return draw_data("V", scene.velocity_old, scene, position, axes)
 
 
 def draw_a(scene, position, axes):
@@ -346,14 +350,13 @@ def draw_a(scene, position, axes):
         axes,
     )
 
-
 def draw_data(annotation, data, scene: Scene, position, axes):
     draw_moved_body(annotation, scene, position, axes)
-    plot_arrows(scene.normalized_nodes + position, data, axes)
+    plot_arrows(get_recentered_nodes(scene, position), data, axes)
 
 
 def draw_moved_body(annotation, scene: Scene, position, axes):
-    draw_triplot(scene.normalized_nodes + position, scene, "tab:blue", axes)
+    draw_triplot(get_recentered_nodes(scene, position), scene, "tab:blue", axes)
     add_annotation(annotation, scene, position, axes)
 
 

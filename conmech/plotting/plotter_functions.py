@@ -150,9 +150,9 @@ def plot_setting(
         fig = plotter_2d.get_fig()
         axs = plotter_2d.get_axs(fig)
         plotter_2d.plot_frame(
+            scene=scene,
             fig=fig,
             axs=axs,
-            scene=scene,
             current_time=current_time,
             draw_detailed=draw_detailed,
         )
@@ -160,5 +160,5 @@ def plot_setting(
     else:
         fig = plotter_3d.get_fig()
         axs = plotter_3d.get_axs(fig)
-        plotter_3d.plot_frame(fig=fig, axs=axs, scene=scene, current_time=current_time)
+        plotter_3d.plot_frame(scene=scene, fig=fig, axs=axs, current_time=current_time)
         plt_save(path, extension)

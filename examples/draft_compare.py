@@ -19,8 +19,8 @@ def main():
     load_dotenv()
     cmh.print_jax_configuration()
 
-    # for mode in ["skinning_backwards", "skinning", "net"]:  # Do not use normal
-    #     run_simulation(mode)
+    for mode in ["skinning_backwards", "skinning", "net"]:  # Do not use normal
+        run_simulation(mode)
 
     training_config = TrainingConfig(shell=False)
     checkpoint_path = get_newest_checkpoint_path(training_config)
