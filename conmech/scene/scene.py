@@ -392,7 +392,6 @@ class Scene(BodyForces):
     @mesh_normalization_decorator
     def to_normalized_displacement(self, acceleration):
         displacement_new = self.to_displacement(acceleration)
-
         moved_nodes_new = self.initial_nodes + displacement_new
         new_normalized_nodes = get_in_base(
             (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
@@ -436,11 +435,22 @@ class Scene(BodyForces):
     #     acceleration = self.from_displacement(displacement_new)
     #     return acceleration
 
-    def get_last_displacement_step(self):
-        return self.displacement_old - self.time_step * self.velocity_old
 
-    def displacement_from_step(self, displacement_step):
-        return self.displacement_old + displacement_step
+    @mesh_normalization_decorator
+    def normalize_pca(self, displacement_new):
+        # return displacement_new
+        moved_nodes_new = self.initial_nodes + displacement_new
+        new_normalized_nodes = self.normalize_rotate(moved_nodes_new - np.mean(self.moved_nodes, axis=0))
+        return new_normalized_nodes - self.normalized_initial_nodes
+
+    @mesh_normalization_decorator
+    def denormalize_pca(self, normalized_displacement_new):
+        # return normalized_displacement_new
+        new_normalized_nodes = normalized_displacement_new + self.normalized_initial_nodes
+        moved_nodes_new = self.denormalize_rotate(new_normalized_nodes) + np.mean(
+            self.moved_nodes, axis=0
+        )
+        return moved_nodes_new - self.initial_nodes
 
     def get_centered_nodes(self, displacement):
         nodes = self.centered_initial_nodes + displacement
@@ -461,10 +471,10 @@ class Scene(BodyForces):
         return displacement
 
     def _get_initial_energy_obstacle_args_for_jax(self, temperature=None):
-        base_velocity = self.normalized_velocity_old
+        base_velocity = self.velocity_old #########################################################3
         base_displacement = (
-            self.normalized_displacement_old + self.time_step * base_velocity
-        )
+            self.displacement_old + self.time_step * base_velocity
+        ) ########################################################################################
 
         args = EnergyObstacleArguments(
             lhs_acceleration_jax=None,

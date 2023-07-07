@@ -88,9 +88,6 @@ def save_results_three(file_path, json_dict):
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
 
-    list_path = "output/three_list.json"
-    cmh.clear_file(list_path)
-
     folder_list = [f[0] for f in os.walk("output") if "0.json" in f[2]]  # [1:]
     folder_list.sort(reverse=True)
     simulations_list, step_list = [], []
@@ -100,6 +97,8 @@ def save_results_three(file_path, json_dict):
             simulations_list.append(simulation)  # os.path.basename(simulation))
             step_list.append(max(steps))
 
+    list_path = "output/three_list.json"
+    # cmh.clear_file(list_path)
     with open(list_path, "w", encoding="utf-8") as file:
         json.dump({"simulations": simulations_list, "steps": step_list}, file)
 

@@ -1,4 +1,5 @@
 """The Limited-Memory Broyden-Fletcher-Goldfarb-Shanno minimization algorithm."""
+# Based on JAX repository
 # pylint: skip-file
 import os
 from functools import partial

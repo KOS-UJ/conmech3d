@@ -41,24 +41,35 @@ def _get_compiled_optimization_function(fun, hes_inv, sample_x0, sample_args):
     )
 
 
-def set_compiled_optimization_functions(energy_functions, hes_inv, x0, args):
+def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, args):
+    if not scene.simulation_config.use_pca:
+        fun_free = energy_functions.energy_obstacle_free
+        fun_colliding = energy_functions.energy_obstacle_colliding
+    else:
+        normalize = lambda acceleration: scene.normalize_pca(acceleration)
+        denormalize = lambda acceleration: scene.denormalize_pca(acceleration)
+
+        fun_free = lambda disp_by_factor, args : energy_functions.energy_obstacle_free(disp_by_factor=disp_by_factor, args=args, normalize=normalize, denormalize=denormalize)
+        fun_colliding = lambda disp_by_factor, args : energy_functions.energy_obstacle_colliding(disp_by_factor=disp_by_factor, args=args, normalize=normalize, denormalize=denormalize)
+    
     energy_functions.opti_free = _get_compiled_optimization_function(
-        fun=energy_functions.energy_obstacle_free,
+        fun=fun_free,
         hes_inv=hes_inv,
         sample_x0=x0,
         sample_args=args,
     )
     energy_functions.opti_colliding = _get_compiled_optimization_function(
-        fun=energy_functions.energy_obstacle_colliding,
+        fun=fun_colliding,
         hes_inv=hes_inv,
         sample_x0=x0,
         sample_args=args,
     )
+    # energy_functions.energy_obstacle_free(disp_by_factor=jnp.array([2,0.,0.]).reshape(-1,3).repeat(919, axis=0).reshape(-1), args=args, normalize=normalize, denormalize=denormalize)
 
 
 def set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args):
     if energy_functions.opti_free is None:
-        set_compiled_optimization_functions(energy_functions, hes_inv, x0, args)
+        set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, args)
     opti_fun = energy_functions.get_optimization_function(scene)
     return opti_fun
 
@@ -106,7 +117,7 @@ class Calculator:
 
     @staticmethod
     def minimize_jax_displacement(
-        function, initial_vector: np.ndarray, args, hes_inv, verbose: bool = True
+        initial_vector: np.ndarray, args, hes_inv, scene, energy_functions, verbose: bool = True
     ) -> np.ndarray:
         range_factor = args.time_step**2
         initial_disp_by_factor = (
@@ -116,12 +127,13 @@ class Calculator:
             initial_vector=initial_disp_by_factor,
             args=args,
             hes_inv=hes_inv,
-            function=function,
+            scene=scene,
+            energy_functions=energy_functions,
             verbose=verbose,
         )
-        return nph.displacement_to_acceleration(
+        return np.asarray(nph.displacement_to_acceleration(
             np.asarray(disp_by_factor * range_factor), args
-        )
+        ))
 
     @staticmethod
     def solve_skinning(
@@ -471,8 +483,12 @@ class Calculator:
         )
 
         with timer["__minimize_jax"]:
+            if not scene.simulation_config.use_pca:
+                minimize_fun = Calculator.minimize_jax
+            else:
+                minimize_fun = Calculator.minimize_jax_displacement
             normalized_a_vector_np = cmh.profile(
-                lambda: Calculator.minimize_jax(  # _displacement(
+                lambda: minimize_fun(
                     # solver= energy_functions.get_solver(scene),
                     initial_vector=initial_a_vector,
                     args=args,

@@ -2,6 +2,10 @@
 # if name == "__main__":
 #     SET_ENV()
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import argparse
 import os
 from argparse import ArgumentParser, Namespace
@@ -13,7 +17,6 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.multiprocessing
-from dotenv import load_dotenv
 
 from conmech.helpers import cmh, pca
 from conmech.helpers.config import Config, SimulationConfig
@@ -156,10 +159,8 @@ def plot(config: TrainingConfig):
 
 
 def run_pca(config: TrainingConfig):
-    dataset = get_train_dataset(config.td.dataset, config=config)
-    dataset.initialize_data()
-    dataloader = base_dataset.get_train_dataloader(dataset)
-
+    mesh_density=32 #16 #32
+    final_time = 8.0 #2.0
     simulation_config = SimulationConfig(
         use_normalization=False,
         use_linear_solver=False,
@@ -168,32 +169,37 @@ def run_pca(config: TrainingConfig):
         use_constant_contact_integral=False,
         use_lhs_preconditioner=False,
         with_self_collisions=True,
-        use_pca=False,
+        use_pca=True,
     )
-    final_time = 0.5
     all_scenarios = [
         scenarios.bunny_fall_3d(
-            mesh_density=32,
+            mesh_density=mesh_density,
             scale=1,
             final_time=final_time,
             simulation_config=simulation_config,
         ),
-        scenarios.bunny_rotate_3d(
-            mesh_density=32,
-            scale=1,
-            final_time=final_time,
-            simulation_config=simulation_config,
-        ),
+        # scenarios.bunny_rotate_3d(
+        #     mesh_density=mesh_density,
+        #     scale=1,
+        #     final_time=final_time,
+        #     simulation_config=simulation_config,
+        # ),
     ]
+
+    # dataset = get_train_dataset(config.td.dataset, config=config, device_count=1)
+    # dataset.initialize_data()
+    # dataloader = base_dataset.get_train_dataloader(dataset)
+    dataloader = None
+    pca.run(dataloader)
 
     simulation_runner.run_examples(
         all_scenarios=all_scenarios,
         file=__file__,
         plot_animation=True,
         config=Config(shell=False),
+        save_all=True
     )
 
-    pca.run(dataloader)
 
 
 def get_train_dataset(
@@ -201,10 +207,11 @@ def get_train_dataset(
     config: TrainingConfig,
     rank: int = 0,
     world_size: int = 1,
-    device_count: int = 1,
+    device_count = None,
     item_fn=None,
 ):
-    device_count = get_device_count(config)
+    if device_count is None:
+        device_count = get_device_count(config)
     if dataset_type == "synthetic":
         train_dataset = SyntheticDataset(
             description="train",
@@ -320,5 +327,4 @@ if __name__ == "__main__":
     )  # Python 3.9+
     args = parser.parse_args()
     # with jax.disable_jit():
-    load_dotenv()
     main(args)
