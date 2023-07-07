@@ -159,8 +159,8 @@ def plot(config: TrainingConfig):
 
 
 def run_pca(config: TrainingConfig):
-    mesh_density=32 #16 #32
-    final_time = 8.0 #2.0
+    mesh_density = 32  # 16 #32
+    final_time = 8.0  # 2.0
     simulation_config = SimulationConfig(
         use_normalization=False,
         use_linear_solver=False,
@@ -197,9 +197,8 @@ def run_pca(config: TrainingConfig):
         file=__file__,
         plot_animation=True,
         config=Config(shell=False),
-        save_all=True
+        save_all=True,
     )
-
 
 
 def get_train_dataset(
@@ -207,7 +206,7 @@ def get_train_dataset(
     config: TrainingConfig,
     rank: int = 0,
     world_size: int = 1,
-    device_count = None,
+    device_count=None,
     item_fn=None,
 ):
     if device_count is None:

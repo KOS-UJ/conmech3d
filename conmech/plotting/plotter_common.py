@@ -31,8 +31,10 @@ class ColorbarSettings:
         norm = matplotlib.colors.Normalize(vmin=self.vmin, vmax=self.vmax)
         return plt.cm.ScalarMappable(norm=norm, cmap=self.cmap)
 
+
 def get_recentered_nodes(scene, position):
     return scene.moved_nodes - np.mean(scene.moved_nodes, axis=0) + position
+
 
 def get_t_scale(
     scenario: Scenario,

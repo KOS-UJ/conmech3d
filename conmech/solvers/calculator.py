@@ -49,9 +49,21 @@ def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, ar
         normalize = lambda acceleration: scene.normalize_pca(acceleration)
         denormalize = lambda acceleration: scene.denormalize_pca(acceleration)
 
-        fun_free = lambda disp_by_factor, args : energy_functions.energy_obstacle_free(disp_by_factor=disp_by_factor, args=args, normalize=normalize, denormalize=denormalize)
-        fun_colliding = lambda disp_by_factor, args : energy_functions.energy_obstacle_colliding(disp_by_factor=disp_by_factor, args=args, normalize=normalize, denormalize=denormalize)
-    
+        fun_free = lambda disp_by_factor, args: energy_functions.energy_obstacle_free(
+            disp_by_factor=disp_by_factor,
+            args=args,
+            normalize=normalize,
+            denormalize=denormalize,
+        )
+        fun_colliding = (
+            lambda disp_by_factor, args: energy_functions.energy_obstacle_colliding(
+                disp_by_factor=disp_by_factor,
+                args=args,
+                normalize=normalize,
+                denormalize=denormalize,
+            )
+        )
+
     energy_functions.opti_free = _get_compiled_optimization_function(
         fun=fun_free,
         hes_inv=hes_inv,
@@ -117,7 +129,12 @@ class Calculator:
 
     @staticmethod
     def minimize_jax_displacement(
-        initial_vector: np.ndarray, args, hes_inv, scene, energy_functions, verbose: bool = True
+        initial_vector: np.ndarray,
+        args,
+        hes_inv,
+        scene,
+        energy_functions,
+        verbose: bool = True,
     ) -> np.ndarray:
         range_factor = args.time_step**2
         initial_disp_by_factor = (
@@ -131,9 +148,11 @@ class Calculator:
             energy_functions=energy_functions,
             verbose=verbose,
         )
-        return np.asarray(nph.displacement_to_acceleration(
-            np.asarray(disp_by_factor * range_factor), args
-        ))
+        return np.asarray(
+            nph.displacement_to_acceleration(
+                np.asarray(disp_by_factor * range_factor), args
+            )
+        )
 
     @staticmethod
     def solve_skinning(

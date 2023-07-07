@@ -438,15 +438,15 @@ class EnergyFunctions:
         #         self._energy_obstacle_colliding
         #     )
 
-            # self.energy_obstacle_free = self._energy_obstacle_free
-            # self.energy_obstacle_colliding = self._energy_obstacle_colliding
+        # self.energy_obstacle_free = self._energy_obstacle_free
+        # self.energy_obstacle_colliding = self._energy_obstacle_colliding
 
-            # self.energy_obstacle_free = lambda vector, args: jnp.float64(
-            #     self._energy_obstacle_free(jnp.array(vector, dtype=jnp.float32), args)
-            # )
-            # self.energy_obstacle_colliding = lambda vector, args: jnp.float64(
-            #     self._energy_obstacle_colliding(jnp.array(vector, dtype=jnp.float32), args)
-            # )
+        # self.energy_obstacle_free = lambda vector, args: jnp.float64(
+        #     self._energy_obstacle_free(jnp.array(vector, dtype=jnp.float32), args)
+        # )
+        # self.energy_obstacle_colliding = lambda vector, args: jnp.float64(
+        #     self._energy_obstacle_colliding(jnp.array(vector, dtype=jnp.float32), args)
+        # )
 
         if simulation_config.use_pca:
             from conmech.helpers.pca import load_pca, p_from_vector, p_to_vector
@@ -458,31 +458,36 @@ class EnergyFunctions:
                 #     scene.from_displacement(scene.recentered_norm_lifted_new_displacement)
                 # )
                 def reformulation(disp_by_factor, args, normalize, denormalize):
-                    factor = (args.time_step**2)
-                    u = nph.unstack(disp_by_factor * factor,dim=3)
-                    u_mean = jnp.mean(u, axis=0) # *0
-                    
+                    factor = args.time_step**2
+                    u = nph.unstack(disp_by_factor * factor, dim=3)
+                    u_mean = jnp.mean(u, axis=0)  # *0
+
                     if False:
                         u_projected = u
                         # u_projected = u_mean.reshape(-1,3).repeat(919, axis=0)
                     else:
-                        u_origin = (u-u_mean)
+                        u_origin = u - u_mean
                         u_norm = normalize(u_origin)
                         # u_projected_norm = u_norm
                         u_norm_latent = p_to_vector(projection, u_norm)
                         u_projected_norm = p_from_vector(projection, u_norm_latent)
                         u_proj_denorm = denormalize(u_projected_norm)
-                        u_projected = (u_proj_denorm  + u_mean)
+                        u_projected = u_proj_denorm + u_mean
                         # - jnp.mean(u_proj_denorm, axis=0)
                     u_projected_vector = nph.stack(u_projected)
-                    return energy_function(
+                    return (
+                        energy_function(
                             nph.displacement_to_acceleration(u_projected_vector, args),
                             args,
-                        ) / factor
+                        )
+                        / factor
+                    )
 
                 return reformulation
 
-            self.energy_obstacle_free = to_displacement_by_factor_pca(self._energy_obstacle_free)
+            self.energy_obstacle_free = to_displacement_by_factor_pca(
+                self._energy_obstacle_free
+            )
             self.energy_obstacle_colliding = to_displacement_by_factor_pca(
                 self._energy_obstacle_colliding
             )

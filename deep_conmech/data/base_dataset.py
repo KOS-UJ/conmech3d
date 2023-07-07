@@ -534,7 +534,7 @@ class BaseDataset:
         #     scene.reduced.exact_acceleration
         # )
 
-        dense_path = None # cmh.get_base_for_comarison()
+        dense_path = None  # cmh.get_base_for_comarison()
         if dense_path is not None:
             (
                 scene.exact_acceleration,

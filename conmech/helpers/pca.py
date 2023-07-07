@@ -70,10 +70,12 @@ def load_pca(file_path="./output/PCA"):
         projection = pickle.load(file)
     return projection
 
+
 def get_displacement_new(scene):
     velocity = scene.velocity_old + scene.time_step * scene.exact_acceleration
     displacement = scene.displacement_old + scene.time_step * velocity
     return displacement
+
 
 def get_data_scenes(scenes):
     data_list = []
@@ -82,7 +84,7 @@ def get_data_scenes(scenes):
         displacement_new = get_displacement_new(scene)
         u = jnp.array(scene.normalize_pca(displacement_new))
         # assert jnp.allclose(scene.displacement_old, scene.denormalize_pca(u))
-        u = u - jnp.mean(u, axis=0) ###
+        u = u - jnp.mean(u, axis=0)  ###
         u_stack = nph.stack(u)
         data_list.append(u_stack)
 
@@ -93,15 +95,17 @@ def get_data_scenes(scenes):
 def get_data_dataset(dataloader):
     return None
     data_list = []
-    count = 500 #2000
+    count = 500  # 2000
     print(f"LIMIT TO {count}")
     # for sample in tqdm(dataloader):
     for _ in tqdm(range(count)):
         sample = next(iter(dataloader))
         target = sample[0][1]
 
-        u = jnp.array(target['last_displacement_step']) # normalized_new_displacement'])
-        u = u - jnp.mean(u, axis=0) ###
+        u = jnp.array(
+            target["last_displacement_step"]
+        )  # normalized_new_displacement'])
+        u = u - jnp.mean(u, axis=0)  ###
         u_stack = nph.stack(u)
         data_list.append(u_stack)
 
@@ -110,8 +114,8 @@ def get_data_dataset(dataloader):
 
 
 def get_projection(data):
-    latent_dim = 200 #data.shape[1] #200 #200 #data.shape[1] # 200
-    projection_mean = 0*data.mean(axis=0)  #0* columnwise mean = 0
+    latent_dim = 200  # data.shape[1] #200 #200 #data.shape[1] # 200
+    projection_mean = 0 * data.mean(axis=0)  # 0* columnwise mean = 0
 
     svd = jax.numpy.linalg.svd(data - projection_mean, full_matrices=False)
     # (svd[0] @ jnp.diag(svd[1]) @ svd[2])
@@ -127,6 +131,7 @@ def project_to_latent(projection, data):
     data_zeroed = data - projection["mean"]
     latent = projection["matrix"] @ data_zeroed
     return latent
+
 
 def project_from_latent(projection, latent):
     # return latent

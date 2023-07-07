@@ -57,6 +57,7 @@ def plot_animation(
         ),
     )
 
+
 @mesh_normalization_decorator
 def plot_frame(
     scene: Scene,
@@ -104,7 +105,7 @@ def plot_frame(
         draw_boundary_resistance_tangential(scene, position, axes=axes)
         # position[0] += shift
         # draw_boundary_v_tangential(scene, position, axes=axes)
-        
+
         # position[0] += shift
         # draw_input_u(scene, position, axes=axes)
         # position[0] += shift
@@ -349,6 +350,7 @@ def draw_a(scene, position, axes):
         position,
         axes,
     )
+
 
 def draw_data(annotation, data, scene: Scene, position, axes):
     draw_moved_body(annotation, scene, position, axes)
