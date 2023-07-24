@@ -343,20 +343,6 @@ class Scene(BodyForces):
     def normalized_lifted_acceleration(self):
         return self.normalize_rotate(self.lifted_acceleration)
 
-    @mesh_normalization_decorator
-    def force_denormalize(self, acceleration):
-        return self.denormalize_rotate(acceleration)
-
-    # @property
-    # @mesh_normalization_decorator
-    # def norm_exact_new_displacement(self):
-    #     return self.to_normalized_displacement(self.exact_acceleration)
-
-    # @property
-    # @mesh_normalization_decorator
-    # def norm_lifted_new_displacement(self):
-    #     return self.to_normalized_displacement(self.lifted_acceleration)
-
     @property
     @mesh_normalization_decorator
     def norm_by_reduced_lifted_new_displacement(self):
@@ -436,24 +422,42 @@ class Scene(BodyForces):
     #     return acceleration
 
     @mesh_normalization_decorator
-    def normalize_pca(self, displacement_new):
+    def force_normalize_pca(self, displacement_new):
         # return displacement_new
+        return displacement_new - np.mean(self.moved_nodes, axis=0)
         moved_nodes_new = self.initial_nodes + displacement_new
         new_normalized_nodes = self.normalize_rotate(
             moved_nodes_new - np.mean(self.moved_nodes, axis=0)
         )
+        # rotation = self.get_rotation_pca(displacement_new)
+        # new_normalized_nodes = get_in_base(
+        #     (moved_nodes_new - np.mean(self.moved_nodes, axis=0)), rotation
+        # )
         return new_normalized_nodes - self.normalized_initial_nodes
 
     @mesh_normalization_decorator
-    def denormalize_pca(self, normalized_displacement_new):
+    def force_denormalize_pca(self, normalized_displacement_new):
         # return normalized_displacement_new
+        return normalized_displacement_new + np.mean(self.moved_nodes, axis=0)
         new_normalized_nodes = (
             normalized_displacement_new + self.normalized_initial_nodes
         )
         moved_nodes_new = self.denormalize_rotate(new_normalized_nodes) + np.mean(
             self.moved_nodes, axis=0
         )
+        # moved_nodes_new = lnh.get_in_base(
+        #     new_normalized_nodes, rotation
+        # ) + np.mean(self.moved_nodes, axis=0)
         return moved_nodes_new - self.initial_nodes
+
+    def get_displacement_pca(self):
+        displacement_new = self.to_displacement(self.exact_acceleration)
+        # u = self.force_normalize_pca(displacement_new)
+        u = displacement_new
+        u = u - np.mean(u, axis=0)
+        # u = displacement_new - np.mean(displacement_new, axis=0)
+        print(f"{np.linalg.norm(displacement_new):.2f} / {np.linalg.norm(u):.2f}")
+        return u
 
     def get_centered_nodes(self, displacement):
         nodes = self.centered_initial_nodes + displacement
@@ -474,12 +478,10 @@ class Scene(BodyForces):
         return displacement
 
     def _get_initial_energy_obstacle_args_for_jax(self, temperature=None):
-        base_velocity = (
-            self.velocity_old
-        )  #########################################################3
+        base_velocity = self.normalized_velocity_old
         base_displacement = (
-            self.displacement_old + self.time_step * base_velocity
-        )  ########################################################################################
+            self.normalized_displacement_old + self.time_step * base_velocity
+        )
 
         args = EnergyObstacleArguments(
             lhs_acceleration_jax=None,

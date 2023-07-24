@@ -283,9 +283,7 @@ class SceneInput(SceneRandomized):
             self.norm_by_reduced_lifted_new_displacement
         )  # lower and rotate
 
-        # target_data.last_displacement_step = thh.to_double(
-        #     self.get_last_displacement_step()
-        # )
+        target_data.displacement_pca = thh.to_double(self.get_displacement_pca())
         ###
 
         skinning_acceleration = np.array(

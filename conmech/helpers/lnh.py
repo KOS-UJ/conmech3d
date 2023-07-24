@@ -2,13 +2,10 @@
 linear algebra helpers
 """
 
+import jax.numpy as jnp
 import numpy as np
 
-from conmech.helpers import nph
-
-
-def move_vector(vectors, index):
-    return np.roll(vectors, -index, axis=0)
+from conmech.helpers import jxh, nph
 
 
 def complete_base(base_seed):
@@ -19,17 +16,21 @@ def complete_base(base_seed):
     return base
 
 
+def __move_vector(vectors, index):
+    return jnp.roll(vectors, -index, axis=0)
+
+
 def __orthonormalize_priority_gram_schmidt(base_seed, index):
-    prioritized_base_seed = move_vector(vectors=base_seed, index=index)
+    prioritized_base_seed = __move_vector(vectors=base_seed, index=index)
     prioritized_base = __orthonormalize_gram_schmidt(prioritized_base_seed)
-    base = move_vector(vectors=prioritized_base, index=index)
+    base = __move_vector(vectors=prioritized_base, index=index)
     return base
 
 
 def __orthonormalize_gram_schmidt(base_seed):
-    normalized_base_seed = nph.normalize_euclidean_numba(base_seed)
+    normalized_base_seed = jxh.normalize_euclidean(base_seed)
     unnormalized_base = __orthogonalize_gram_schmidt(normalized_base_seed)
-    base = nph.normalize_euclidean_numba(unnormalized_base)
+    base = jxh.normalize_euclidean(unnormalized_base)
     return base
 
 
@@ -37,14 +38,14 @@ def __orthogonalize_gram_schmidt(vectors):
     # Gramm-Schmidt orthogonalization
     b0 = vectors[0]
     if len(vectors) == 1:
-        return np.array((b0))
+        return jnp.array((b0))
 
     b1 = vectors[1] - (vectors[1] @ b0) * b0
     if len(vectors) == 2:
-        return np.array((b0, b1))
+        return jnp.array((b0, b1))
 
-    b2 = np.cross(b0, b1)
-    return np.array((b0, b1, b2))
+    b2 = jnp.cross(b0, b1)
+    return jnp.array((b0, b1, b2))
 
 
 def generate_base(dimension):

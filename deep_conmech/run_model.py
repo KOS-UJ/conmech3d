@@ -169,8 +169,20 @@ def run_pca(config: TrainingConfig):
         use_constant_contact_integral=False,
         use_lhs_preconditioner=False,
         with_self_collisions=True,
-        use_pca=True,
+        use_pca=False,  # True,  # False
     )
+    dataset = get_train_dataset(
+        dataset_type=config.td.dataset, config=config, device_count=1
+    )
+    # datasets = get_all_val_datasets(config=config, rank=0, world_size=1, device_count=1)
+    # dataset = datasets[1]
+    dataset.initialize_data()
+    dataloader = base_dataset.get_train_dataloader(dataset)
+
+    # dataloader = None
+
+    # pca.run(dataloader)
+
     all_scenarios = [
         scenarios.bunny_fall_3d(
             mesh_density=mesh_density,
@@ -185,12 +197,6 @@ def run_pca(config: TrainingConfig):
         #     simulation_config=simulation_config,
         # ),
     ]
-
-    # dataset = get_train_dataset(config.td.dataset, config=config, device_count=1)
-    # dataset.initialize_data()
-    # dataloader = base_dataset.get_train_dataloader(dataset)
-    dataloader = None
-    pca.run(dataloader)
 
     simulation_runner.run_examples(
         all_scenarios=all_scenarios,

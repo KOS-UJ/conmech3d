@@ -104,6 +104,10 @@ class RotationState(NamedTuple):
 
 @jax.jit
 def _get_rotation_jax(displacement, dx_big):
+    return _get_rotation_jax_inner(displacement, dx_big)
+
+
+def _get_rotation_jax_inner(displacement, dx_big):
     max_iter = 100
     max_norm = 1e-4
     deform_grad = _get_deform_grad(displacement, dx_big)
@@ -173,7 +177,15 @@ class Dynamics(BodyPosition):
         if not state.success:
             raise Exception("Error calculating rotation")
         # print(state.iteration, state.norm)
-        return complete_base(base_seed=np.array(final_rotation, dtype=np.float64))
+        return np.array(
+            complete_base(base_seed=np.array(final_rotation, dtype=np.float64))
+        )
+
+    def get_rotation_pca(self, displacement):
+        final_rotation, state = _get_rotation_jax_inner(
+            displacement, self.matrices.dx_big_jax
+        )
+        return complete_base(base_seed=jnp.array(final_rotation, dtype=jnp.float64))
 
     # def iterate_self(self, acceleration, temperature=None):
     #     super().iterate_self(acceleration, temperature)

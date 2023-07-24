@@ -39,7 +39,7 @@ def get_scenes():
     path_id = "/scenarios/"
     scene_files = [f for f in scene_files if path_id in f and "SAVED" not in f]
 
-    assert len(scene_files) == 2
+    assert len(scene_files) == 1
     # all_arrays_path = max(scene_files, key=os.path.getctime)
     scenes = []
     for all_arrays_path in scene_files:
@@ -81,10 +81,7 @@ def get_data_scenes(scenes):
     data_list = []
     for scene in tqdm(scenes):
         # print(scene.moved_base)
-        displacement_new = get_displacement_new(scene)
-        u = jnp.array(scene.normalize_pca(displacement_new))
-        # assert jnp.allclose(scene.displacement_old, scene.denormalize_pca(u))
-        u = u - jnp.mean(u, axis=0)  ###
+        u = scene.get_displacement_pca()
         u_stack = nph.stack(u)
         data_list.append(u_stack)
 
@@ -93,23 +90,21 @@ def get_data_scenes(scenes):
 
 
 def get_data_dataset(dataloader):
-    return None
     data_list = []
-    count = 500  # 2000
+    count = 3000  # RANDOMIZE
     print(f"LIMIT TO {count}")
-    # for sample in tqdm(dataloader):
-    for _ in tqdm(range(count)):
-        sample = next(iter(dataloader))
+    for i, sample in enumerate(tqdm(dataloader)):
         target = sample[0][1]
 
-        u = jnp.array(
-            target["last_displacement_step"]
-        )  # normalized_new_displacement'])
-        u = u - jnp.mean(u, axis=0)  ###
+        u = jnp.array(target["displacement_pca"])  # normalized_new_displacement'])
         u_stack = nph.stack(u)
         data_list.append(u_stack)
+        if i > count:
+            break
 
-    data = jnp.array(data_list)
+    data = jnp.array(
+        data_list
+    )  # Sort by displacement and get max, plot hist # np.linalg.norm(data_list[190])
     return data, u_stack, u
 
 

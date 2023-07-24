@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from conmech.dynamics.dynamics import _get_deform_grad
-from conmech.helpers import jxh, nph
+from conmech.helpers import jxh, lnh, nph
 from conmech.helpers.config import SimulationConfig
 
 
@@ -457,21 +457,31 @@ class EnergyFunctions:
                 # scene.lifted_acceleration = np.array(
                 #     scene.from_displacement(scene.recentered_norm_lifted_new_displacement)
                 # )
-                def reformulation(disp_by_factor, args, normalize, denormalize):
+                def reformulation(
+                    disp_by_factor, args, normalize, denormalize, get_rotation
+                ):
                     factor = args.time_step**2
                     u = nph.unstack(disp_by_factor * factor, dim=3)
-                    u_mean = jnp.mean(u, axis=0)  # *0
+                    u_mean = jnp.mean(u, axis=0)  # *0'
+                    u_origin = u - u_mean
+                    # rotation = get_rotation(u_origin)
 
                     if False:
                         u_projected = u
                         # u_projected = u_mean.reshape(-1,3).repeat(919, axis=0)
                     else:
-                        u_origin = u - u_mean
-                        u_norm = normalize(u_origin)
-                        # u_projected_norm = u_norm
+                        u_norm = u_origin
+                        # u_norm = normalize(u_origin)
+                        # u_norm = lnh.get_in_base(u_origin, rotation)
+
                         u_norm_latent = p_to_vector(projection, u_norm)
+                        # u_projected_norm = u_norm
                         u_projected_norm = p_from_vector(projection, u_norm_latent)
-                        u_proj_denorm = denormalize(u_projected_norm)
+
+                        u_proj_denorm = u_projected_norm
+                        # u_proj_denorm = denormalize(u_projected_norm)
+                        # u_proj_denorm = lnh.get_in_base(u_projected_norm, jnp.linalg.inv(rotation))
+
                         u_projected = u_proj_denorm + u_mean
                         # - jnp.mean(u_proj_denorm, axis=0)
                     u_projected_vector = nph.stack(u_projected)

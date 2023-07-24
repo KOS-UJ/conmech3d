@@ -46,14 +46,15 @@ def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, ar
         fun_free = energy_functions.energy_obstacle_free
         fun_colliding = energy_functions.energy_obstacle_colliding
     else:
-        normalize = lambda acceleration: scene.normalize_pca(acceleration)
-        denormalize = lambda acceleration: scene.denormalize_pca(acceleration)
+        normalize = lambda displacement: scene.force_normalize_pca(displacement)
+        denormalize = lambda displacement: scene.force_denormalize_pca(displacement)
 
         fun_free = lambda disp_by_factor, args: energy_functions.energy_obstacle_free(
             disp_by_factor=disp_by_factor,
             args=args,
             normalize=normalize,
             denormalize=denormalize,
+            get_rotation=scene.get_rotation_pca,
         )
         fun_colliding = (
             lambda disp_by_factor, args: energy_functions.energy_obstacle_colliding(
@@ -61,6 +62,7 @@ def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, ar
                 args=args,
                 normalize=normalize,
                 denormalize=denormalize,
+                get_rotation=scene.get_rotation_pca,
             )
         )
 
