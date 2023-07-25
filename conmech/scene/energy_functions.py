@@ -419,71 +419,22 @@ class EnergyFunctions:
 
         self.temperature_cost_function = None
 
-        # return
-
-        def to_displacement(function):
-            return lambda displacement, args: function(
-                nph.displacement_to_acceleration(displacement, args),
-                args,
-            ) * (1 / (args.time_step**2))
-
-        # if not simulation_config.use_pca:
-        #     def to_displacement_by_factor(function):
-        #         return lambda disp_by_factor, args: to_displacement(function)(
-        #             disp_by_factor * (args.time_step**2), args
-        #         )
-
-        #     self.energy_obstacle_free = to_displacement_by_factor(self._energy_obstacle_free)
-        #     self.energy_obstacle_colliding = to_displacement_by_factor(
-        #         self._energy_obstacle_colliding
-        #     )
-
-        # self.energy_obstacle_free = self._energy_obstacle_free
-        # self.energy_obstacle_colliding = self._energy_obstacle_colliding
-
-        # self.energy_obstacle_free = lambda vector, args: jnp.float64(
-        #     self._energy_obstacle_free(jnp.array(vector, dtype=jnp.float32), args)
-        # )
-        # self.energy_obstacle_colliding = lambda vector, args: jnp.float64(
-        #     self._energy_obstacle_colliding(jnp.array(vector, dtype=jnp.float32), args)
-        # )
-
         if simulation_config.use_pca:
             from conmech.helpers.pca import load_pca, p_from_vector, p_to_vector
 
             projection = load_pca()
 
             def to_displacement_by_factor_pca(energy_function):
-                # scene.lifted_acceleration = np.array(
-                #     scene.from_displacement(scene.recentered_norm_lifted_new_displacement)
-                # )
-                def reformulation(
-                    disp_by_factor, args, normalize, denormalize, get_rotation
-                ):
+                def reformulation(disp_by_factor, args):
                     factor = args.time_step**2
                     u = nph.unstack(disp_by_factor * factor, dim=3)
-                    u_mean = jnp.mean(u, axis=0)  # *0'
+                    u_mean = jnp.mean(u, axis=0)
                     u_origin = u - u_mean
-                    # rotation = get_rotation(u_origin)
 
-                    if False:
-                        u_projected = u
-                        # u_projected = u_mean.reshape(-1,3).repeat(919, axis=0)
-                    else:
-                        u_norm = u_origin
-                        # u_norm = normalize(u_origin)
-                        # u_norm = lnh.get_in_base(u_origin, rotation)
+                    u_latent = p_to_vector(projection, u_origin)
+                    u_projected = p_from_vector(projection, u_latent)
 
-                        u_norm_latent = p_to_vector(projection, u_norm)
-                        # u_projected_norm = u_norm
-                        u_projected_norm = p_from_vector(projection, u_norm_latent)
-
-                        u_proj_denorm = u_projected_norm
-                        # u_proj_denorm = denormalize(u_projected_norm)
-                        # u_proj_denorm = lnh.get_in_base(u_projected_norm, jnp.linalg.inv(rotation))
-
-                        u_projected = u_proj_denorm + u_mean
-                        # - jnp.mean(u_proj_denorm, axis=0)
+                    u_projected = u_projected + u_mean
                     u_projected_vector = nph.stack(u_projected)
                     return (
                         energy_function(

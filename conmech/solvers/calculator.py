@@ -41,39 +41,15 @@ def _get_compiled_optimization_function(fun, hes_inv, sample_x0, sample_args):
     )
 
 
-def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, args):
-    if not scene.simulation_config.use_pca:
-        fun_free = energy_functions.energy_obstacle_free
-        fun_colliding = energy_functions.energy_obstacle_colliding
-    else:
-        normalize = lambda displacement: scene.force_normalize_pca(displacement)
-        denormalize = lambda displacement: scene.force_denormalize_pca(displacement)
-
-        fun_free = lambda disp_by_factor, args: energy_functions.energy_obstacle_free(
-            disp_by_factor=disp_by_factor,
-            args=args,
-            normalize=normalize,
-            denormalize=denormalize,
-            get_rotation=scene.get_rotation_pca,
-        )
-        fun_colliding = (
-            lambda disp_by_factor, args: energy_functions.energy_obstacle_colliding(
-                disp_by_factor=disp_by_factor,
-                args=args,
-                normalize=normalize,
-                denormalize=denormalize,
-                get_rotation=scene.get_rotation_pca,
-            )
-        )
-
+def set_compiled_optimization_functions(energy_functions, hes_inv, x0, args):
     energy_functions.opti_free = _get_compiled_optimization_function(
-        fun=fun_free,
+        fun=energy_functions.energy_obstacle_free,
         hes_inv=hes_inv,
         sample_x0=x0,
         sample_args=args,
     )
     energy_functions.opti_colliding = _get_compiled_optimization_function(
-        fun=fun_colliding,
+        fun=energy_functions.energy_obstacle_colliding,
         hes_inv=hes_inv,
         sample_x0=x0,
         sample_args=args,
@@ -83,7 +59,7 @@ def set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, ar
 
 def set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args):
     if energy_functions.opti_free is None:
-        set_compiled_optimization_functions(scene, energy_functions, hes_inv, x0, args)
+        set_compiled_optimization_functions(energy_functions, hes_inv, x0, args)
     opti_fun = energy_functions.get_optimization_function(scene)
     return opti_fun
 
