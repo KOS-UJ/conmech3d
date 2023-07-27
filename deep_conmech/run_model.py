@@ -160,7 +160,7 @@ def plot(config: TrainingConfig):
 
 def run_pca(config: TrainingConfig):
     mesh_density = 32  # 16 #32
-    final_time = 8.0  # 2.0
+    final_time = 2.0 #8.0  # 2.0
     simulation_config = SimulationConfig(
         use_normalization=False,
         use_linear_solver=False,
@@ -169,7 +169,7 @@ def run_pca(config: TrainingConfig):
         use_constant_contact_integral=False,
         use_lhs_preconditioner=False,
         with_self_collisions=True,
-        use_pca=False,  # True,  # False
+        use_pca=True,
     )
     dataset = get_train_dataset(
         dataset_type=config.td.dataset, config=config, device_count=1
@@ -181,21 +181,21 @@ def run_pca(config: TrainingConfig):
 
     # dataloader = None
 
-    # pca.run(dataloader)
+    pca.run(dataloader, latent_dim=50)
 
     all_scenarios = [
-        scenarios.bunny_fall_3d(
-            mesh_density=mesh_density,
-            scale=1,
-            final_time=final_time,
-            simulation_config=simulation_config,
-        ),
-        # scenarios.bunny_rotate_3d(
+        # scenarios.bunny_fall_3d(
         #     mesh_density=mesh_density,
         #     scale=1,
         #     final_time=final_time,
         #     simulation_config=simulation_config,
         # ),
+        scenarios.bunny_rotate_3d(
+            mesh_density=mesh_density,
+            scale=1,
+            final_time=final_time,
+            simulation_config=simulation_config,
+        ),
     ]
 
     simulation_runner.run_examples(

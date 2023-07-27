@@ -114,22 +114,33 @@ class Calculator:
         energy_functions,
         verbose: bool = True,
     ) -> np.ndarray:
-        range_factor = args.time_step**2
-        initial_disp_by_factor = (
-            nph.acceleration_to_displacement(initial_vector, args) / range_factor
-        )
-        disp_by_factor = Calculator.minimize_jax(
-            initial_vector=initial_disp_by_factor,
+        from conmech.helpers.pca import p_from_vector, p_to_vector
+
+        initial_disp = nph.acceleration_to_displacement(initial_vector, args)
+
+        dim=3
+        initial_u = nph.unstack(initial_disp, dim=dim)
+        initial_u_mean = jnp.mean(initial_u, axis=0)
+        initial_u_origin = initial_u - initial_u_mean
+
+        initial_u_latent = p_to_vector(energy_functions.projection, initial_u_origin)
+        initial_u_latent_and_mean = jnp.append(initial_u_latent, initial_u_mean)
+
+        u_latent_and_mean = Calculator.minimize_jax(
+            initial_vector=initial_u_latent_and_mean,
             args=args,
             hes_inv=hes_inv,
             scene=scene,
             energy_functions=energy_functions,
             verbose=verbose,
         )
+
+        u_latent, u_mean = u_latent_and_mean[:-dim], u_latent_and_mean[-dim:]
+        u_projected = p_from_vector(energy_functions.projection, u_latent) + u_mean
+        u_projected_vector = nph.stack(u_projected)
+
         return np.asarray(
-            nph.displacement_to_acceleration(
-                np.asarray(disp_by_factor * range_factor), args
-            )
+            nph.displacement_to_acceleration(np.asarray(u_projected_vector), args)
         )
 
     @staticmethod

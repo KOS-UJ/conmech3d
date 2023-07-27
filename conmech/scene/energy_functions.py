@@ -420,28 +420,21 @@ class EnergyFunctions:
         self.temperature_cost_function = None
 
         if simulation_config.use_pca:
-            from conmech.helpers.pca import load_pca, p_from_vector, p_to_vector
+            from conmech.helpers.pca import load_pca, p_from_vector
 
-            projection = load_pca()
+            self.projection = load_pca()
 
             def to_displacement_by_factor_pca(energy_function):
-                def reformulation(disp_by_factor, args):
-                    factor = args.time_step**2
-                    u = nph.unstack(disp_by_factor * factor, dim=3)
-                    u_mean = jnp.mean(u, axis=0)
-                    u_origin = u - u_mean
-
-                    u_latent = p_to_vector(projection, u_origin)
-                    u_projected = p_from_vector(projection, u_latent)
-
+                def reformulation(latent_with_mean, args):
+                    dim = 3
+                    u_latent, u_mean = latent_with_mean[:-dim], latent_with_mean[-dim:]
+                    u_projected = p_from_vector(self.projection, u_latent)
                     u_projected = u_projected + u_mean
                     u_projected_vector = nph.stack(u_projected)
-                    return (
-                        energy_function(
-                            nph.displacement_to_acceleration(u_projected_vector, args),
-                            args,
-                        )
-                        / factor
+
+                    return energy_function(
+                        nph.displacement_to_acceleration(u_projected_vector, args),
+                        args,
                     )
 
                 return reformulation

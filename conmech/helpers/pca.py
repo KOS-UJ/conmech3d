@@ -96,7 +96,9 @@ def get_data_dataset(dataloader):
     for i, sample in enumerate(tqdm(dataloader)):
         target = sample[0][1]
 
-        u = jnp.array(target["displacement_pca"])  # normalized_new_displacement'])
+        u = jnp.array(
+            target["displacement_pca"]
+        )  # normalized_new_displacement']) #TODO: Add rotation
         u_stack = nph.stack(u)
         data_list.append(u_stack)
         if i > count:
@@ -108,9 +110,8 @@ def get_data_dataset(dataloader):
     return data, u_stack, u
 
 
-def get_projection(data):
-    latent_dim = 200  # data.shape[1] #200 #200 #data.shape[1] # 200
-    projection_mean = 0 * data.mean(axis=0)  # 0* columnwise mean = 0
+def get_projection(data, latent_dim):
+    projection_mean = 0  # data.mean(axis=0)
 
     svd = jax.numpy.linalg.svd(data - projection_mean, full_matrices=False)
     # (svd[0] @ jnp.diag(svd[1]) @ svd[2])
@@ -122,14 +123,12 @@ def get_projection(data):
 
 
 def project_to_latent(projection, data):
-    # return data
     data_zeroed = data - projection["mean"]
     latent = projection["matrix"] @ data_zeroed
     return latent
 
 
 def project_from_latent(projection, latent):
-    # return latent
     data_stack_zeroed = projection["matrix"].T @ latent
     data_stack = data_stack_zeroed + projection["mean"]
     return data_stack
@@ -143,14 +142,14 @@ def p_from_vector(projection, latent):
     return nph.unstack(project_from_latent(projection, latent), dim=3)
 
 
-def run(dataloader):
+def run(dataloader, latent_dim):
     if dataloader is None:
         scenes = get_scenes()
         data, sample_u_stack, sample_u = get_data_scenes(scenes)
     else:
         data, sample_u_stack, sample_u = get_data_dataset(dataloader)
 
-    original_projection = get_projection(data)
+    original_projection = get_projection(data, latent_dim)
     save_pca(original_projection)
 
     # projection = load_pca()
