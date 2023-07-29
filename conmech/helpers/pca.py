@@ -4,9 +4,13 @@ from io import BufferedReader
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from tqdm import tqdm
 
-from conmech.helpers import cmh, nph
+from conmech.helpers import cmh, lnh, nph
+from conmech.properties.mesh_properties import MeshProperties
+from conmech.scene.scene import Scene
+from conmech.simulations.simulation_runner import create_scene
 
 
 def get_all_indices(data_path):
@@ -81,7 +85,7 @@ def get_data_scenes(scenes):
     data_list = []
     for scene in tqdm(scenes):
         # print(scene.moved_base)
-        u = scene.get_displacement_pca()
+        u = scene.get_exact_displacement()
         u_stack = nph.stack(u)
         data_list.append(u_stack)
 
@@ -89,25 +93,36 @@ def get_data_scenes(scenes):
     return data, u_stack, u
 
 
-def get_data_dataset(dataloader):
+def get_data_dataset(dataloader, scene):
     data_list = []
-    count = 3000  # RANDOMIZE
+    count = 3000
     print(f"LIMIT TO {count}")
-    for i, sample in enumerate(tqdm(dataloader)):
+    for i, sample in enumerate(tqdm(dataloader)):  # check randomness
         target = sample[0][1]
 
-        u = jnp.array(
-            target["displacement_pca"]
-        )  # normalized_new_displacement']) #TODO: Add rotation
-        u_stack = nph.stack(u)
-        data_list.append(u_stack)
+        original_displacement = jnp.array(target["new_displacement"])
+
+        original_rotation = scene.get_rotation(original_displacement)
+        random_rotation = jnp.linalg.qr(np.random.rand(3, 3))[0]
+        new_rotation = original_rotation.T @ random_rotation
+
+        moved_nodes = scene.initial_nodes + original_displacement
+        displacement_mean = np.mean(moved_nodes, axis=0)
+        rotated_moved_nodes = lnh.get_in_base2(
+            (moved_nodes - displacement_mean), new_rotation
+        )
+        displacement = rotated_moved_nodes - scene.initial_nodes
+        displacement += displacement_mean  # 20 * np.random.rand(3) ###
+
+        displacement_stack = nph.stack(displacement)
+        data_list.append(displacement_stack)
         if i > count:
             break
 
     data = jnp.array(
         data_list
     )  # Sort by displacement and get max, plot hist # np.linalg.norm(data_list[190])
-    return data, u_stack, u
+    return data, displacement_stack, displacement
 
 
 def get_projection(data, latent_dim):
@@ -142,12 +157,15 @@ def p_from_vector(projection, latent):
     return nph.unstack(project_from_latent(projection, latent), dim=3)
 
 
-def run(dataloader, latent_dim):
+def run(dataloader, latent_dim, scenario):
     if dataloader is None:
         scenes = get_scenes()
         data, sample_u_stack, sample_u = get_data_scenes(scenes)
     else:
-        data, sample_u_stack, sample_u = get_data_dataset(dataloader)
+        scene = create_scene(scenario)
+        data, sample_u_stack, sample_u = get_data_dataset(
+            dataloader=dataloader, scene=scene
+        )
 
     original_projection = get_projection(data, latent_dim)
     save_pca(original_projection)

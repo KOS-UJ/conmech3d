@@ -350,12 +350,12 @@ class BodyPosition:
     def normalize_rotate(self, vectors):
         if not self.normalize:
             return vectors
-        return lnh.get_in_base(vectors, self.moved_base)
+        return lnh.get_in_base2(vectors, self.moved_base.T)
 
     def denormalize_rotate(self, vectors):
         if not self.normalize:
             return vectors
-        return lnh.get_in_base(vectors, np.linalg.inv(self.moved_base))
+        return lnh.get_in_base2(vectors, self.moved_base)
 
     def normalize_shift_and_rotate(self, vectors):
         return self.normalize_rotate(self._normalize_shift(vectors))
@@ -437,6 +437,6 @@ class BodyPosition:
 
     @property
     def centered_nodes(self):
-        return lnh.get_in_base(
-            (self.moved_nodes - np.mean(self.moved_nodes, axis=0)), self.moved_base
+        return lnh.get_in_base2(
+            (self.moved_nodes - np.mean(self.moved_nodes, axis=0)), self.moved_base.T
         )

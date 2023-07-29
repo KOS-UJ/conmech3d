@@ -120,14 +120,14 @@ class Calculator:
 
         dim=3
         initial_u = nph.unstack(initial_disp, dim=dim)
-        initial_u_mean = jnp.mean(initial_u, axis=0)
-        initial_u_origin = initial_u - initial_u_mean
+        # initial_u_mean = jnp.mean(initial_u, axis=0)
+        # initial_u_origin = initial_u - initial_u_mean
 
-        initial_u_latent = p_to_vector(energy_functions.projection, initial_u_origin)
-        initial_u_latent_and_mean = jnp.append(initial_u_latent, initial_u_mean)
+        initial_u_latent = p_to_vector(energy_functions.projection, initial_u) #initial_u_origin)
+        # initial_u_latent_and_mean = jnp.append(initial_u_latent, initial_u_mean)
 
-        u_latent_and_mean = Calculator.minimize_jax(
-            initial_vector=initial_u_latent_and_mean,
+        u_latent = Calculator.minimize_jax( #u_latent_and_mean
+            initial_vector=initial_u_latent, #initial_u_latent_and_mean,
             args=args,
             hes_inv=hes_inv,
             scene=scene,
@@ -135,8 +135,8 @@ class Calculator:
             verbose=verbose,
         )
 
-        u_latent, u_mean = u_latent_and_mean[:-dim], u_latent_and_mean[-dim:]
-        u_projected = p_from_vector(energy_functions.projection, u_latent) + u_mean
+        # u_latent, u_mean = u_latent_and_mean[:-dim], u_latent_and_mean[-dim:]
+        u_projected = p_from_vector(energy_functions.projection, u_latent)# + u_mean
         u_projected_vector = nph.stack(u_projected)
 
         return np.asarray(

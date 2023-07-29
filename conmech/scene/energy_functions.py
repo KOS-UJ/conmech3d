@@ -425,11 +425,11 @@ class EnergyFunctions:
             self.projection = load_pca()
 
             def to_displacement_by_factor_pca(energy_function):
-                def reformulation(latent_with_mean, args):
+                def reformulation(u_latent, args):
                     dim = 3
-                    u_latent, u_mean = latent_with_mean[:-dim], latent_with_mean[-dim:]
+                    # u_latent, u_mean = latent_with_mean[:-dim], latent_with_mean[-dim:]
                     u_projected = p_from_vector(self.projection, u_latent)
-                    u_projected = u_projected + u_mean
+                    # u_projected = u_projected + u_mean
                     u_projected_vector = nph.stack(u_projected)
 
                     return energy_function(

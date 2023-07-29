@@ -82,5 +82,5 @@ def correct_base(base):
     return True
 
 
-def get_in_base(vectors, base):
-    return vectors @ base.T
+def get_in_base2(vectors, base):
+    return vectors @ base
