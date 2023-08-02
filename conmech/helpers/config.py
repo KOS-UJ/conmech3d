@@ -40,10 +40,10 @@ class SimulationConfig:
     use_nonconvex_friction_law: bool
     use_constant_contact_integral: bool
     use_lhs_preconditioner: bool
-    use_pca: bool
     with_self_collisions: bool
     mesh_layer_proportion: int = None
-    mode: str = "normal"  # "normal" "skinning" "net"
+    mode: str = "normal"  # "normal" "skinning" "net" "pca"
+
 
 
 @dataclass

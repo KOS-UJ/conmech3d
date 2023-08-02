@@ -20,6 +20,8 @@ from conmech.solvers.calculator import Calculator
 def get_solve_function(simulation_config):
     if simulation_config.mode == "normal":
         return Calculator.solve
+    if simulation_config.mode == "pca":
+        return Calculator.solve
     if simulation_config.mode == "compare_reduced":
         return Calculator.solve_compare_reduced
     if simulation_config.mode == "skinning":
@@ -59,7 +61,7 @@ def create_scene(scenario):
     create_in_subprocess = False
 
     def get_scene():
-        if scenario.simulation_config.mode == "normal":
+        if scenario.simulation_config.mode in ["normal", "pca"]:
             scene = Scene(
                 mesh_prop=scenario.mesh_prop,
                 body_prop=scenario.body_prop,
@@ -187,6 +189,8 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     )
     comparer_data = {
         "displacement_old": scene.displacement_old,
+        "new_displacement": scene.get_exact_displacement(),
+        "norm_new_displacement": scene.to_normalized_displacement(scene.exact_acceleration),
         "exact_acceleration": scene.exact_acceleration,
         "normalized_nodes": normalized_nodes,
         "lifted_acceleration": scene.lifted_acceleration,

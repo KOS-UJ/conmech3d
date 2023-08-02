@@ -32,7 +32,7 @@ def main():
     load_dotenv()
     cmh.print_jax_configuration()
 
-    def get_simulation_config(mode="normal", use_pca=False):
+    def get_simulation_config(mode="normal"):
         return SimulationConfig(
             use_normalization=False,
             use_linear_solver=False,
@@ -41,7 +41,6 @@ def main():
             use_constant_contact_integral=False,
             use_lhs_preconditioner=False,
             with_self_collisions=True,
-            use_pca=use_pca,
             mesh_layer_proportion=4,
             mode=mode,
         )

@@ -169,7 +169,7 @@ def run_pca(config: TrainingConfig):
         use_constant_contact_integral=False,
         use_lhs_preconditioner=False,
         with_self_collisions=True,
-        use_pca=True,
+        mode="pca",
     )
     all_scenarios = [
         scenarios.bunny_fall_3d(

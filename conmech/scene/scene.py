@@ -450,8 +450,7 @@ class Scene(BodyForces):
         return moved_nodes_new - self.initial_nodes
 
     def get_exact_displacement(self):
-        displacement_new = self.to_displacement(self.exact_acceleration)
-        return displacement_new
+        return self.to_displacement(self.lifted_acceleration)
 
     def get_centered_nodes(self, displacement):
         nodes = self.centered_initial_nodes + displacement
