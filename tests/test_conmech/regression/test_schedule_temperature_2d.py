@@ -16,7 +16,6 @@ simulation_config = SimulationConfig(
     use_constant_contact_integral=False,
     use_lhs_preconditioner=False,
     with_self_collisions=False,
-    use_pca=False,
 )
 
 

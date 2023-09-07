@@ -44,7 +44,7 @@ def translate_nodes(nodes: np.ndarray, mesh_prop: MeshProperties):
     if mesh_prop.mean_at_origin:
         nodes -= np.mean(nodes, axis=0)
     if mesh_prop.initial_base is not None:
-        nodes = lnh.get_in_base(nodes, mesh_prop.initial_base)
+        nodes = lnh.get_in_base2(nodes, mesh_prop.initial_base.T)
     if mesh_prop.initial_position is not None:
         nodes += mesh_prop.initial_position
     return nodes

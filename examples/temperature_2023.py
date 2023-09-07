@@ -30,7 +30,6 @@ def main(mesh_density=32, final_time=2.5, plot_animation=True, shell=False):
         use_constant_contact_integral=False,
         use_lhs_preconditioner=False,
         with_self_collisions=False,
-        use_pca=False,
     )
     schedule = Schedule(final_time=final_time, time_step=0.01)
 

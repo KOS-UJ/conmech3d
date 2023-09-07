@@ -10,7 +10,6 @@ from conmech.dynamics.factory.dynamics_factory_method import ConstMatrices
 from conmech.helpers import jxh, lnh, nph
 from conmech.helpers.config import SimulationConfig
 from conmech.helpers.interpolation_helpers import interpolate_nodes
-from conmech.helpers.lnh import get_in_base
 from conmech.properties.body_properties import TimeDependentBodyProperties
 from conmech.properties.mesh_properties import MeshProperties
 from conmech.properties.obstacle_properties import ObstacleProperties
@@ -343,20 +342,6 @@ class Scene(BodyForces):
     def normalized_lifted_acceleration(self):
         return self.normalize_rotate(self.lifted_acceleration)
 
-    @mesh_normalization_decorator
-    def force_denormalize(self, acceleration):
-        return self.denormalize_rotate(acceleration)
-
-    # @property
-    # @mesh_normalization_decorator
-    # def norm_exact_new_displacement(self):
-    #     return self.to_normalized_displacement(self.exact_acceleration)
-
-    # @property
-    # @mesh_normalization_decorator
-    # def norm_lifted_new_displacement(self):
-    #     return self.to_normalized_displacement(self.lifted_acceleration)
-
     @property
     @mesh_normalization_decorator
     def norm_by_reduced_lifted_new_displacement(self):
@@ -369,9 +354,9 @@ class Scene(BodyForces):
                 base_scene = self.reduced
             else:
                 base_scene = self  # TODO: Add warning
-            return get_in_base(
+            return lnh.get_in_base2(
                 (moved_nodes - np.mean(base_scene.moved_nodes, axis=0)),
-                base_scene.get_rotation(base_scene.displacement_old),
+                base_scene.get_rotation(base_scene.displacement_old).T,
             )
 
         displacement_new = self.to_displacement(exact_acceleration)
@@ -392,11 +377,10 @@ class Scene(BodyForces):
     @mesh_normalization_decorator
     def to_normalized_displacement(self, acceleration):
         displacement_new = self.to_displacement(acceleration)
-
         moved_nodes_new = self.initial_nodes + displacement_new
-        new_normalized_nodes = get_in_base(
+        new_normalized_nodes = lnh.get_in_base2(
             (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
-            self.get_rotation(displacement_new),
+            self.get_rotation(displacement_new).T,
         )
         return new_normalized_nodes - self.normalized_initial_nodes
 
@@ -405,9 +389,9 @@ class Scene(BodyForces):
     #     displacement_new = self.to_displacement(acceleration)
 
     #     moved_nodes_new = self.initial_nodes + displacement_new
-    #     new_normalized_nodes = get_in_base(
+    #     new_normalized_nodes = lnh.get_in_base2(
     #         (moved_nodes_new - np.mean(moved_nodes_new, axis=0)),
-    #         self.get_rotation(self.displacement_old),
+    #         self.get_rotation(self.displacement_old).T,
     #     )
     #     assert np.allclose(new_normalized_nodes, self.normalize_shift_and_rotate(moved_nodes_new))
     #     return new_normalized_nodes - self.normalized_initial_nodes
@@ -416,9 +400,9 @@ class Scene(BodyForces):
     def to_normalized_displacement_rotated_displaced(self, acceleration):
         displacement_new = self.to_displacement(acceleration)
         moved_nodes_new = self.initial_nodes + displacement_new
-        new_normalized_nodes = get_in_base(
+        new_normalized_nodes = lnh.get_in_base2(
             (moved_nodes_new - np.mean(self.moved_nodes, axis=0)),
-            self.get_rotation(self.displacement_old),
+            self.get_rotation(self.displacement_old).T,
         )
         # assert np.allclose(
         #     new_normalized_nodes,
@@ -436,16 +420,42 @@ class Scene(BodyForces):
     #     acceleration = self.from_displacement(displacement_new)
     #     return acceleration
 
-    def get_last_displacement_step(self):
-        return self.displacement_old - self.time_step * self.velocity_old
+    @mesh_normalization_decorator
+    def force_normalize_pca(self, displacement_new):
+        # return displacement_new
+        return displacement_new - np.mean(self.moved_nodes, axis=0)
+        moved_nodes_new = self.initial_nodes + displacement_new
+        new_normalized_nodes = self.normalize_rotate(
+            moved_nodes_new - np.mean(self.moved_nodes, axis=0)
+        )
+        # rotation = self.get_rotation_pca(displacement_new)
+        # new_normalized_nodes = lnh.get_in_base2(
+        #     (moved_nodes_new - np.mean(self.moved_nodes, axis=0)), rotation.T
+        # )
+        return new_normalized_nodes - self.normalized_initial_nodes
 
-    def displacement_from_step(self, displacement_step):
-        return self.displacement_old + displacement_step
+    @mesh_normalization_decorator
+    def force_denormalize_pca(self, normalized_displacement_new):
+        # return normalized_displacement_new
+        return normalized_displacement_new + np.mean(self.moved_nodes, axis=0)
+        new_normalized_nodes = (
+            normalized_displacement_new + self.normalized_initial_nodes
+        )
+        moved_nodes_new = self.denormalize_rotate(new_normalized_nodes) + np.mean(
+            self.moved_nodes, axis=0
+        )
+        # moved_nodes_new = lnh.get_in_base2(
+        #     new_normalized_nodes, rotation.T
+        # ) + np.mean(self.moved_nodes, axis=0)
+        return moved_nodes_new - self.initial_nodes
+
+    def get_lifted_displacement(self):
+        return self.to_displacement(self.lifted_acceleration)
 
     def get_centered_nodes(self, displacement):
         nodes = self.centered_initial_nodes + displacement
-        centered_nodes = lnh.get_in_base(
-            (nodes - nodes.mean(axis=0)), self.get_rotation(displacement)
+        centered_nodes = lnh.get_in_base2(
+            (nodes - nodes.mean(axis=0)), self.get_rotation(displacement).T
         )
         return centered_nodes
 
@@ -454,9 +464,7 @@ class Scene(BodyForces):
             centered_nodes = self.centered_nodes
         else:
             centered_nodes = self.get_centered_nodes(base_displacement)
-        moved_centered_nodes = (
-            lnh.get_in_base(centered_nodes, np.linalg.inv(base)) + position
-        )
+        moved_centered_nodes = lnh.get_in_base2(centered_nodes, base) + position
         displacement = moved_centered_nodes - self.centered_initial_nodes
         return displacement
 

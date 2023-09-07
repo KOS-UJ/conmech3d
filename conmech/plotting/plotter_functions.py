@@ -88,9 +88,6 @@ def save_results_three(file_path, json_dict):
     with open(file_path, "w", encoding="utf-8") as file:
         json.dump(json_dict, file)
 
-    list_path = "output/three_list.json"
-    cmh.clear_file(list_path)
-
     folder_list = [f[0] for f in os.walk("output") if "0.json" in f[2]]  # [1:]
     folder_list.sort(reverse=True)
     simulations_list, step_list = [], []
@@ -100,6 +97,8 @@ def save_results_three(file_path, json_dict):
             simulations_list.append(simulation)  # os.path.basename(simulation))
             step_list.append(max(steps))
 
+    list_path = "output/three_list.json"
+    # cmh.clear_file(list_path)
     with open(list_path, "w", encoding="utf-8") as file:
         json.dump({"simulations": simulations_list, "steps": step_list}, file)
 
@@ -150,9 +149,9 @@ def plot_setting(
         fig = plotter_2d.get_fig()
         axs = plotter_2d.get_axs(fig)
         plotter_2d.plot_frame(
+            scene=scene,
             fig=fig,
             axs=axs,
-            scene=scene,
             current_time=current_time,
             draw_detailed=draw_detailed,
         )
@@ -160,5 +159,5 @@ def plot_setting(
     else:
         fig = plotter_3d.get_fig()
         axs = plotter_3d.get_axs(fig)
-        plotter_3d.plot_frame(fig=fig, axs=axs, scene=scene, current_time=current_time)
+        plotter_3d.plot_frame(scene=scene, fig=fig, axs=axs, current_time=current_time)
         plt_save(path, extension)

@@ -81,7 +81,6 @@ class ProblemSolver:
                 use_constant_contact_integral=False,
                 use_lhs_preconditioner=False,
                 with_self_collisions=False,
-                use_pca=False,
             ),
             dynamics_config=DynamicsConfiguration(
                 create_in_subprocess=False,

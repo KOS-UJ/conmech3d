@@ -10,6 +10,7 @@ from conmech.plotting import plotter_common
 from conmech.plotting.plotter_common import PlotAnimationConfig, make_animation
 from conmech.scene.scene import Scene
 from conmech.scene.scene_temperature import SceneTemperature
+from conmech.state.body_position import mesh_normalization_decorator
 
 
 def get_fig():
@@ -67,10 +68,11 @@ def get_axs(fig):
     return [ax0, ax1, ax2, ax3]
 
 
+@mesh_normalization_decorator
 def plot_frame(
+    scene: Scene,
     fig,
     axs,
-    scene: Scene,
     current_time,
     t_scale: Optional[List] = None,
 ):

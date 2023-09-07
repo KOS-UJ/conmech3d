@@ -54,6 +54,7 @@ def set_compiled_optimization_functions(energy_functions, hes_inv, x0, args):
         sample_x0=x0,
         sample_args=args,
     )
+    # energy_functions.energy_obstacle_free(disp_by_factor=jnp.array([2,0.,0.]).reshape(-1,3).repeat(919, axis=0).reshape(-1), args=args, normalize=normalize, denormalize=denormalize)
 
 
 def set_and_get_opti_fun(energy_functions, scene, hes_inv, x0, args):
@@ -105,22 +106,37 @@ class Calculator:
         return np.asarray(state.x_k)  # , state
 
     @staticmethod
-    def minimize_jax_displacement(
-        function, initial_vector: np.ndarray, args, hes_inv, verbose: bool = True
+    def minimize_jax_displacement_pca(
+        initial_vector: np.ndarray,
+        args,
+        hes_inv,
+        scene,
+        energy_functions,
+        verbose: bool = True,
     ) -> np.ndarray:
-        range_factor = args.time_step**2
-        initial_disp_by_factor = (
-            nph.acceleration_to_displacement(initial_vector, args) / range_factor
-        )
-        disp_by_factor = Calculator.minimize_jax(
-            initial_vector=initial_disp_by_factor,
+        from conmech.helpers.pca import p_from_vector, p_to_vector
+
+        initial_disp = nph.acceleration_to_displacement(initial_vector, args)
+
+        dim = 3
+        initial_u = nph.unstack(initial_disp, dim=dim)
+
+        initial_u_latent = p_to_vector(energy_functions.projection, initial_u)
+
+        u_latent = Calculator.minimize_jax(
+            initial_vector=initial_u_latent,
             args=args,
             hes_inv=hes_inv,
-            function=function,
+            scene=scene,
+            energy_functions=energy_functions,
             verbose=verbose,
         )
-        return nph.displacement_to_acceleration(
-            np.asarray(disp_by_factor * range_factor), args
+
+        u_projected = p_from_vector(energy_functions.projection, u_latent)
+        u_projected_vector = nph.stack(u_projected)
+
+        return np.asarray(
+            nph.displacement_to_acceleration(np.asarray(u_projected_vector), args)
         )
 
     @staticmethod
@@ -213,14 +229,22 @@ class Calculator:
             if hasattr(energy_functions, "__len__")
             else energy_functions
         )
+
+        dense_path = cmh.get_base_for_comarison()
+
         with timer["reduced_solver"]:
-            exact_acceleration, _ = Calculator.solve(
+            scene.lifted_acceleration, _ = Calculator.solve(
                 scene=scene,
                 energy_functions=energy_functions,
                 initial_a=scene.exact_acceleration,
                 timer=timer,
             )
-            scene.lifted_acceleration = exact_acceleration
+            if dense_path is None:
+                exact_acceleration = scene.lifted_acceleration
+            else:
+                exact_acceleration, _ = cmh.get_exact_acceleration(
+                    scene=scene, path=dense_path
+                )
         with timer["lift_data"]:
             scene.reduced.exact_acceleration = scene.lift_acceleration_from_position(
                 exact_acceleration
@@ -471,8 +495,12 @@ class Calculator:
         )
 
         with timer["__minimize_jax"]:
+            if not scene.simulation_config.mode == "pca":
+                minimize_fun = Calculator.minimize_jax
+            else:
+                minimize_fun = Calculator.minimize_jax_displacement_pca
             normalized_a_vector_np = cmh.profile(
-                lambda: Calculator.minimize_jax(  # _displacement(
+                lambda: minimize_fun(
                     # solver= energy_functions.get_solver(scene),
                     initial_vector=initial_a_vector,
                     args=args,

@@ -20,6 +20,8 @@ from conmech.solvers.calculator import Calculator
 def get_solve_function(simulation_config):
     if simulation_config.mode == "normal":
         return Calculator.solve
+    if simulation_config.mode == "pca":
+        return Calculator.solve_skinning_backwards  ### solve
     if simulation_config.mode == "compare_reduced":
         return Calculator.solve_compare_reduced
     if simulation_config.mode == "skinning":
@@ -59,7 +61,7 @@ def create_scene(scenario):
     create_in_subprocess = False
 
     def get_scene():
-        if scenario.simulation_config.mode == "normal":
+        if scenario.simulation_config.mode in ["normal"]:
             scene = Scene(
                 mesh_prop=scenario.mesh_prop,
                 body_prop=scenario.body_prop,
@@ -68,7 +70,11 @@ def create_scene(scenario):
                 create_in_subprocess=create_in_subprocess,
                 simulation_config=scenario.simulation_config,
             )
-        elif scenario.simulation_config.mode in ["skinning", "skinning_backwards"]:
+        elif scenario.simulation_config.mode in [
+            "skinning",
+            "skinning_backwards",
+            "pca",
+        ]:
             from deep_conmech.scene.scene_layers import SceneLayers
 
             scene = SceneLayers(
@@ -180,24 +186,26 @@ def save_scene(scene: Scene, scenes_path: str, save_animation: bool):
     pkh.append_data(data=blender_data, data_path=blender_data_path, lock=None)
 
     # Comparer
-    comparer_data_path = scenes_path + "_comparer"
+    if hasattr(scene, 'reduced'):
+        comparer_data_path = scenes_path + "_comparer"
 
-    normalized_nodes = (
-        scene.initial_nodes + scene.norm_by_reduced_lifted_new_displacement
-    )
-    comparer_data = {
-        "displacement_old": scene.displacement_old,
-        "exact_acceleration": scene.exact_acceleration,
-        "normalized_nodes": normalized_nodes,
-        "lifted_acceleration": scene.lifted_acceleration,
-        "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
-        "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
-        "norm_reduced": scene.get_norm_by_reduced_lifted_new_displacement(
-            scene.exact_acceleration
-        ),
-    }
+        comparer_data = {
+            "exact_acceleration": scene.exact_acceleration,
+            "lifted_acceleration": scene.lifted_acceleration,
+            "lifted_displacement": scene.get_lifted_displacement(),
+            "norm_new_displacement": scene.to_normalized_displacement(
+                scene.lifted_acceleration
+            ),
+            "norm_reduced": scene.norm_by_reduced_lifted_new_displacement,
+            "normalized_by_reduces_nodes": scene.normalized_initial_nodes
+            + scene.norm_by_reduced_lifted_new_displacement,
+            "norm_lifted_new_displacement": scene.norm_lifted_new_displacement,
+            "normalized_nodes": scene.normalized_initial_nodes
+            + scene.norm_lifted_new_displacement,
+            "recentered_norm_lifted_new_displacement": scene.recentered_norm_lifted_new_displacement,
+        }
 
-    pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
+        pkh.append_data(data=comparer_data, data_path=comparer_data_path, lock=None)
 
     # Matplotlib
     if save_animation:
@@ -254,12 +262,12 @@ def run_scenario(
             save_scene(
                 scene=scene, scenes_path=scenes_path, save_animation=save_animation
             )
-            if with_reduced:
-                save_scene(
-                    scene=scene.reduced,
-                    scenes_path=scenes_path_reduced,
-                    save_animation=save_animation,
-                )
+            # if with_reduced:
+            #     save_scene(
+            #         scene=scene.reduced,
+            #         scenes_path=scenes_path_reduced,
+            #         save_animation=save_animation,
+            #     )
         if plot_index:
             plot_scenes_count[0] += 1
         step[0] += 1

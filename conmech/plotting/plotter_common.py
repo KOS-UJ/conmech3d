@@ -32,6 +32,10 @@ class ColorbarSettings:
         return plt.cm.ScalarMappable(norm=norm, cmap=self.cmap)
 
 
+def get_recentered_nodes(scene, position):
+    return scene.moved_nodes - np.mean(scene.moved_nodes, axis=0) + position
+
+
 def get_t_scale(
     scenario: Scenario,
     index_skip: int,
@@ -138,9 +142,9 @@ def make_animation(get_axs, plot_frame, t_scale):
         )
 
         plot_frame(
+            scene=scene,
             axs=axs,
             fig=args.fig,
-            scene=scene,
             current_time=step * args.time_skip,
             t_scale=t_scale,
         )

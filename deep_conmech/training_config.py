@@ -118,7 +118,6 @@ def get_train_config(shell, mode):
         use_lhs_preconditioner=False,
         with_self_collisions=True,
         mesh_layer_proportion=4,  # 2 4
-        use_pca=False,
         mode=mode,
     )
     return config
