@@ -16,7 +16,12 @@ from deep_conmech.training_config import TrainingConfig, get_train_config
 
 def main():
     load_dotenv()
-    modes = ["skinning_backwards", "skinning", "net"]  # Do not use normal "pca"
+    modes = [
+        "skinning_backwards",
+        "skinning",
+        "net",
+        "pca",
+    ]  # , "pca"]  # Do not use "normal" - does not contain reduced
     # run_all_simulations(modes=modes)
     compare_latest(modes=modes)
     input("Press Enter to continue...")
@@ -38,7 +43,7 @@ def run_simulation(mode):
     all_scenarios = scenarios.all_validation(config.td, config.sc)
     all_scenarios = all_scenarios[-1]
 
-    # all_scenarios[0].schedule.final_time = 0.1
+    # all_scenarios[0].schedule.final_time = 1.
 
     simulation_runner.run_examples(
         all_scenarios=all_scenarios,
@@ -75,13 +80,14 @@ def compare_latest(modes):
         return simulation
 
     base = cmh.get_simulation(scene_files, "skinning_backwards")
-    base = add_centered(base)
+    # base = add_centered(base)
 
     cmh.create_folder(main_path)
     for key in [
         "norm_lifted_new_displacement",
         "recentered_norm_lifted_new_displacement",
-        "centered_new_displacement",
+        "normalized_nodes",
+        # "centered_new_displacement",
         # "new_displacement",
         # "displacement_old",
         # "exact_acceleration",
@@ -93,7 +99,7 @@ def compare_latest(modes):
             if mode == "skinning_backwards":
                 continue
             pretendent = cmh.get_simulation(scene_files, mode)
-            pretendent = add_centered(pretendent)
+            # pretendent = add_centered(pretendent)
 
             simulation_len = min(len(base), len(pretendent))
 
@@ -102,11 +108,11 @@ def compare_latest(modes):
                 errors.append(get_error(base, pretendent, index=index, key=key))
             errors_df[mode] = np.array(errors)
             print(f"Error {mode} {key}: ", np.mean(errors))
+            print()
 
         plot = errors_df.plot()
         fig = plot.get_figure()
         fig.savefig(f"{main_path}/{dense}_{key}.png")
-
 
 
 if __name__ == "__main__":

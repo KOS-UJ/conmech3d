@@ -85,7 +85,7 @@ def get_data_scenes(scenes):
     data_list = []
     for scene in tqdm(scenes):
         # print(scene.moved_base)
-        u = scene.get_exact_displacement()
+        u = scene.get_lifted_displacement()
         u_stack = nph.stack(u)
         data_list.append(u_stack)
 

@@ -106,7 +106,7 @@ class Calculator:
         return np.asarray(state.x_k)  # , state
 
     @staticmethod
-    def minimize_jax_displacement(
+    def minimize_jax_displacement_pca(
         initial_vector: np.ndarray,
         args,
         hes_inv,
@@ -229,14 +229,22 @@ class Calculator:
             if hasattr(energy_functions, "__len__")
             else energy_functions
         )
+
+        dense_path = cmh.get_base_for_comarison()
+
         with timer["reduced_solver"]:
-            exact_acceleration, _ = Calculator.solve(
+            scene.lifted_acceleration, _ = Calculator.solve(
                 scene=scene,
                 energy_functions=energy_functions,
                 initial_a=scene.exact_acceleration,
                 timer=timer,
             )
-            scene.lifted_acceleration = exact_acceleration
+            if dense_path is None:
+                exact_acceleration = scene.lifted_acceleration
+            else:
+                exact_acceleration, _ = cmh.get_exact_acceleration(
+                    scene=scene, path=dense_path
+                )
         with timer["lift_data"]:
             scene.reduced.exact_acceleration = scene.lift_acceleration_from_position(
                 exact_acceleration
@@ -490,7 +498,7 @@ class Calculator:
             if not scene.simulation_config.mode == "pca":
                 minimize_fun = Calculator.minimize_jax
             else:
-                minimize_fun = Calculator.minimize_jax_displacement
+                minimize_fun = Calculator.minimize_jax_displacement_pca
             normalized_a_vector_np = cmh.profile(
                 lambda: minimize_fun(
                     # solver= energy_functions.get_solver(scene),

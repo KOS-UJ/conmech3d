@@ -449,7 +449,7 @@ class Scene(BodyForces):
         # ) + np.mean(self.moved_nodes, axis=0)
         return moved_nodes_new - self.initial_nodes
 
-    def get_exact_displacement(self):
+    def get_lifted_displacement(self):
         return self.to_displacement(self.lifted_acceleration)
 
     def get_centered_nodes(self, displacement):
